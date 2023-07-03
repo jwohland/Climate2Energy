@@ -1,0 +1,9 @@
+name: CESM2energy
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - xarray
+  - numpy
+  - python
+  - salem
