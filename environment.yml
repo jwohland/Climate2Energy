@@ -8,3 +8,5 @@ dependencies:
   - python
   - salem
   - geopandas
+  - rasterio
+  - nc-time-axis
