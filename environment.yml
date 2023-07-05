@@ -10,3 +10,4 @@ dependencies:
   - geopandas
   - rasterio
   - nc-time-axis
+  - windpowerlib
