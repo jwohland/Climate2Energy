@@ -74,5 +74,5 @@ def country_means(ds, method="all"):
     """
     ds = cut_out_countries(ds)
     if method ==  "all":
-        ds = ds.mean(dim=["lat", "lon"])
+        ds = ds.mean(dim=["lat", "lon"], skipna=True)
     return ds
