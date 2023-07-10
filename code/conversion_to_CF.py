@@ -98,6 +98,7 @@ def convert_winds(ds, filename):
     :param filename:
     :return:
     """
+    wind_power_list = []
     for turbine_index in range(3):
         # Open power curves if they exists, otherwise compute them
         try:
@@ -119,12 +120,20 @@ def convert_winds(ds, filename):
             wind_power = update_attrs(
                 wind_power, "s_hub", "", "CF_wind", "normalized_wind_power_generation"
             )
+            wind_power["turbine"] = P.turbine_name
             print("wind power conversion took " + str(time.time() - t_0))
             t_0 = time.time()
             wind_power.to_netcdf(out_path + P.turbine_name + "/" + filename)
             print("saving took " + str(int(time.time() - t_0)) + " s")
-
-        return wind_power
+        wind_power_list.append(wind_power)
+    wind_power = xr.concat(
+        wind_power_list,
+        dim=pd.Index(
+            [Power(turbine_index).turbine_name for turbine_index in range(3)],
+            name="turbine",
+        ),
+    )
+    return wind_power
 
 
 def calculate_PV(ds, params=None, num_cores=1):
@@ -136,7 +145,9 @@ def calculate_PV(ds, params=None, num_cores=1):
     :return:
     """
     if not params:
-        params = dict(tilt=35, azim=180, tracking=0, capacity=1)  # capacity set to 1 Watt, that is output are capacity factors
+        params = dict(
+            tilt=35, azim=180, tracking=0, capacity=1
+        )  # capacity set to 1 Watt, that is output are capacity factors
     ds_pv = run_interface_from_dataset(
         data=ds,
         params=params,
@@ -145,4 +156,3 @@ def calculate_PV(ds, params=None, num_cores=1):
         num_cores=num_cores,
     )
     return ds_pv
-
