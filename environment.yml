@@ -10,3 +10,5 @@ dependencies:
   - geopandas
   - rasterio
   - nc-time-axis
+  - bias_correction
+  - tqdm

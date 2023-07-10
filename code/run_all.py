@@ -4,12 +4,17 @@ from conversion_to_CF import *
 from country_average import *
 from utils import *
 
+
 data_path =  "/net/xenon/climphys/lbloin/energy_boost/"
 ds = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_6h.nc")
 ds = zero_mean_longitudes(ds)
 
-# Step 1: Bias correction
-ds = bias_correct(ds)
+# Step 1: Bias correction 
+dim = "time"
+for var in ["temperature", "FSDS"]:
+    da = ds[var]
+    lat,lon = 47,8 #to do: entire map
+    da = xr.apply_ufunc(bias_correct, da,var, method,lat,lon)
 
 # Step 2: Calculate capacity factors
 ds_CF_PV = calculate_PV(ds)
