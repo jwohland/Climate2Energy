@@ -66,13 +66,13 @@ class Power:
         :param s:
         :return:
         """
-        s = np.round(s, 2)  # only two decimal accuracy in power curve
         if s < self.power_curve.index[0] or s > self.power_curve.index[-1]:
             # below cut_in or above cut_out
             out = 0.0
         else:
-            out = self.power_curve.loc[s].values[0]
-        return out
+            idx = self.power_curve[self.power_curve.index > s].iloc[0]  # close index, power curve index monotonically increases
+            out = self.power_curve.iloc[idx].values[0]
+        return float(out)
 
 
 def update_attrs(ds, var, unitname, varname, long_varname):
@@ -94,7 +94,7 @@ def update_attrs(ds, var, unitname, varname, long_varname):
 def convert_winds(ds, filename):
     """
     Convert wind speeds to wind capacity factors for the three turbines
-    :param ds: xr.dataset with hub height wind speeds availablee as "s_hub"
+    :param ds: xr.dataset with hub height wind speeds available as "s_hub"
     :param filename:
     :return:
     """
