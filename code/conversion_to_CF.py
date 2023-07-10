@@ -108,23 +108,18 @@ def convert_winds(ds, filename):
             P = Power(turbine_index)
         print(P.turbine_name)
 
-        # Check if this particular output already exists, otherwise compute
-        try:
-            wind_power = xr.open_dataset(out_path + P.turbine_name + "/" + filename)
-            print(" already exists")
-        except FileNotFoundError:
-            t_0 = time.time()
-            wind_power = xr.apply_ufunc(
-                P.power_conversion, ds["s_hub"], vectorize=True, dask="allowed"
-            ).to_dataset()
-            wind_power = update_attrs(
-                wind_power, "s_hub", "", "CF_wind", "normalized_wind_power_generation"
-            )
-            wind_power["turbine"] = P.turbine_name
-            print("wind power conversion took " + str(time.time() - t_0))
-            t_0 = time.time()
-            wind_power.to_netcdf(out_path + P.turbine_name + "/" + filename)
-            print("saving took " + str(int(time.time() - t_0)) + " s")
+        t_0 = time.time()
+        wind_power = xr.apply_ufunc(
+            P.power_conversion, ds["s_hub"], vectorize=True, dask="allowed"
+        ).to_dataset()
+        wind_power = update_attrs(
+            wind_power, "s_hub", "", "CF_wind", "normalized_wind_power_generation"
+        )
+        wind_power["turbine"] = P.turbine_name
+        print("wind power conversion took " + str(time.time() - t_0))
+        t_0 = time.time()
+        wind_power.to_netcdf(out_path + P.turbine_name + "/" + filename)
+        print("saving took " + str(int(time.time() - t_0)) + " s")
         wind_power_list.append(wind_power)
     wind_power = xr.concat(
         wind_power_list,
@@ -156,3 +151,4 @@ def calculate_PV(ds, params=None, num_cores=1):
         num_cores=num_cores,
     )
     return ds_pv
+
