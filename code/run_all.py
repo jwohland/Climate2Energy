@@ -7,7 +7,6 @@ from utils import *
 
 data_path = "/net/xenon/climphys/lbloin/energy_boost/"
 ds = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_6h.nc")
-ds = zero_mean_longitudes(ds)
 
 # wind example over limited domain and just claiming that one level is hub height
 # todo this is just temporary and needs to be generalized to full domain and correct heights
@@ -15,22 +14,23 @@ ds_wind = (
     ds.isel(lev=31, ilev=31)["U"]
     .squeeze()
     .drop(["lev", "ilev"])
-    .sel(lat=slice(50, 60), lon=slice(10, 20))
+    .isel(time=slice(0, 3))
+    .sel(lat=slice(35, 75), lon=slice(-12, 40))
 )
+ds_wind = zero_mean_longitudes(ds_wind)
 ds_wind = ds_wind.to_dataset(name="s_hub")
 
 # radiation example over limited domain and just claiming that one level is hub height
 # todo this is just temporary and needs to be expanded to full domain
 # gsee expects dataset with variables "global_horizontal" and "temperature"
 ds_PV = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h2.nc")
-ds_PV = (
-    ds_PV["FSDS"].sel(lat=slice(50, 60), lon=slice(10, 20))
-)
+ds_PV = ds_PV["FSDS"].isel(time=slice(0, 3)).sel(lat=slice(35, 75), lon=slice(-12, 40))
 ds_PV = ds_PV.to_dataset(name="global_horizontal")
 ds_temp = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h1.nc")
 ds_PV["temperature"] = ds_temp["TREFHT"]
-ds_PV["time"] = ds_PV.indexes["time"].to_datetimeindex()  # time index that GSEE understands
-
+ds_PV["time"] = ds_PV.indexes[
+    "time"
+].to_datetimeindex()  # time index that GSEE understands
 
 
 # Step 1: Bias correction
