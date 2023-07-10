@@ -109,7 +109,7 @@ def convert_winds(ds, filename):
 
         # Check if this particular output already exists, otherwise compute
         try:
-            xr.open_dataset(out_path + P.turbine_name + "/" + filename)
+            wind_power = xr.open_dataset(out_path + P.turbine_name + "/" + filename)
             print(" already exists")
         except FileNotFoundError:
             t_0 = time.time()
@@ -123,6 +123,8 @@ def convert_winds(ds, filename):
             t_0 = time.time()
             wind_power.to_netcdf(out_path + P.turbine_name + "/" + filename)
             print("saving took " + str(int(time.time() - t_0)) + " s")
+
+        return wind_power
 
 
 def calculate_PV(ds, params=None, num_cores=1):
