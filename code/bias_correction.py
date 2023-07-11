@@ -13,10 +13,8 @@ def bias_correct(da, var, method, lat, lon):
     ):
         subprocess.run("./preprocess_bias_correction.sh")
     # open reference and model data
-    reference = xr.open_dataset(f"../output/{var}_ERA5.nc").TREFHT
-    model = xr.open_dataset(f"/../output/hist_{var}.nc").TREFHT.sel(
-        lat=slice(30, 75), lon=slice(-15, 50)
-    )
+    reference = xr.open_dataset(f"../output/{var}_ERA5.nc")[var]
+    model = xr.open_dataset(f"/../output/hist_{var}.nc")[var]
     # finding grid cell and converting to Pandas.Series (necessary for bias_correction package)
     ls = [reference, model, da]
     for i in range(len(ls)):
