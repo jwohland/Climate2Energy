@@ -74,5 +74,16 @@ def country_means(ds, method="all"):
     """
     ds = cut_out_countries(ds)
     if method ==  "all":
-        ds = ds.mean(dim=["lat", "lon"])
+        ds = ds.mean(dim=["lat", "lon"], skipna=True)
     return ds
+
+
+def store_as_pandas_dataframe(da, name):
+    """
+    Save dataarray da as pandas dataFrame to output directory
+    :param ds:
+    :param name:
+    :return:
+    """
+    da.to_pandas().to_csv("../output/" + name + ".csv")
+
