@@ -10,3 +10,14 @@ def zero_mean_longitudes(ds):
     ds.coords['lon'] = (ds.coords['lon'] + 180) % 360 - 180
     ds = ds.sortby("lon")
     return ds
+
+def temp_cel(ds):
+    """
+    returns the temperature dataset ds in celsius
+    """
+    if "temperature" in ds.data_vars:
+        ds["temperature"] = ds["temperature"] - 273.15
+        return ds 
+    else:
+        "temperature is not in this dataset"
+        return None

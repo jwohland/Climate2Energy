@@ -1,20 +1,28 @@
 import xarray as xr
-from bias_correction import *
+from bias_correction_step import *
 from conversion_to_CF import *
 from country_average import *
 from utils import *
+import numpy as np
 
+print("open files")
 
 data_path =  "/net/xenon/climphys/lbloin/energy_boost/"
 ds = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_6h.nc")
-ds = zero_mean_longitudes(ds)
+ds_wind = zero_mean_longitudes(ds).sel(lon=slice(-15,50),lat=slice(30,75)).isel(lev=31)
+ds_wind["s_hub"] = np.sqrt(ds_wind["U"]**2+ds_wind["V"]**2)
+
+ds = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h2.nc")
+ds_PV = zero_mean_longitudes(ds)
+ds_t = zero_mean_longitudes(xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h1.nc"))
+ds_PV["temperature"] = ds_t["TREFHT"]
+ds_PV = ds_PV.sel(lon=slice(-15,50),lat=slice(30,75))
 
 # Step 1: Bias correction 
-dim = "time"
 for var in ["temperature", "FSDS"]:
-    da = ds[var]
-    lat,lon = 47,8 #to do: entire map
-    da = xr.apply_ufunc(bias_correct, da,var, method,lat,lon)
+    ds_PV[var] = bias_correct(ds_PV, var)
+
+ds_wind = bias_correct(ds_wind, "s_hub")
 
 # Step 2: Calculate capacity factors
 ds_CF_PV = calculate_PV(ds)
