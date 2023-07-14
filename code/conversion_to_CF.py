@@ -66,12 +66,14 @@ class Power:
         :param s:
         :return:
         """
-        if s < self.power_curve.index[0] or s > self.power_curve.index[-1]:
+        if np.isnan(s):
+            return np.nan
+        elif s <= self.power_curve.index[0] or s >= self.power_curve.index[-1]:
             # below cut_in or above cut_out
             out = 0.0
         else:
             idx = self.power_curve[self.power_curve.index > s].iloc[0]  # close index, power curve index monotonically increases
-            out = self.power_curve.iloc[idx].values[0]
+            out = idx.values[0]
         return float(out)
 
 
