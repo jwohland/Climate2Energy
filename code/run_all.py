@@ -1,8 +1,7 @@
-import xarray as xr
+from utils import *
 from bias_correction import *
 from conversion_to_CF import *
 from country_average import *
-from utils import *
 
 
 data_path = "/net/xenon/climphys/lbloin/energy_boost/"
@@ -18,9 +17,11 @@ ds_wind = ds_wind.to_dataset(name="s_hub")
 # radiation example
 # gsee expects dataset with variables "global_horizontal" and "temperature"
 ds_PV = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h2.nc")
+ds_PV = zero_mean_longitudes(ds_PV)
 ds_PV = ds_PV["FSDS"].sel(lat=slice(35, 75), lon=slice(-12, 40))
 ds_PV = ds_PV.to_dataset(name="global_horizontal")
 ds_temp = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h1.nc")
+ds_temp = zero_mean_longitudes(ds_temp).sel(lat=slice(35, 75), lon=slice(-12, 40))
 ds_PV["temperature"] = ds_temp["TREFHT"]
 ds_PV["time"] = ds_PV.indexes[
     "time"
@@ -37,14 +38,14 @@ ds_CF_wind = convert_winds(
 )  # this expects that ds has variable called s_hub with hub height winds
 
 # Step 3: subset countries
-df_PV = cut_out_countries(ds_CF_PV)
-df_wind = cut_out_countries(ds_CF_wind)
+ds_CF_PV_countries = country_means(ds_CF_PV)
+ds_CF_wind_countries = country_means(ds_CF_wind)
 
 # Step4: Save data
 # wind
 for i in range(3):
-    ds = ds_wind.isel(turbine=i)
-    turbine_name = str(ds.turbine.values)
-    store_as_pandas_dataframe(ds["CF_wind"], name="CF_" + turbine_name)
+    ds_tmp = ds_CF_wind_countries.isel(turbine=i)
+    turbine_name = str(ds_tmp.turbine.values)
+    store_as_pandas_dataframe(ds_tmp["CF_wind"], name="CF_" + turbine_name)
 # PV
-store_as_pandas_dataframe(ds_PV["pv"], name="CF_PV")
+store_as_pandas_dataframe(ds_CF_PV_countries["pv"], name="CF_PV")
