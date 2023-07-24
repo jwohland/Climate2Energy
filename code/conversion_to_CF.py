@@ -87,7 +87,7 @@ def update_attrs(ds, var, unitname, varname, long_varname):
     :param long_varname: new long name of the variable
     :return:
     """
-    ds = ds.rename_vars({var: varname})
+    ds = ds.rename({var: varname})
     ds[varname].attrs["units"] = unitname
     ds[varname].attrs["long_name"] = long_varname
     return ds
