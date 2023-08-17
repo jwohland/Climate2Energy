@@ -22,3 +22,12 @@ def temp_cel(ds):
     else:
         "temperature is not in this dataset"
         return None
+
+def store_as_pandas_dataframe(ds, name):
+    """
+
+    :param ds:
+    :param name:
+    :return:
+    """
+    ds.to_pandas().to_csv("../output/" + name + ".csv")
