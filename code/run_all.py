@@ -1,5 +1,5 @@
 import xarray as xr
-from bias_correction_step import *
+from bias_correction_methods import *
 from conversion_to_CF import *
 from country_average import *
 from utils import *
@@ -20,9 +20,9 @@ ds_PV = ds_PV.sel(lon=slice(-15,50),lat=slice(30,75))
 
 # Step 1: Bias correction 
 for var in ["temperature", "FSDS"]:
-    ds_PV[var] = bias_correct(ds_PV, var)
+    ds_PV[var] = bias_correct_dataset(ds_PV, var)
 
-ds_wind = bias_correct(ds_wind, "s_hub")
+ds_wind = bias_correct_dataset(ds_wind, "s_hub")
 
 # Step 2: Calculate capacity factors
 ds_CF_PV = calculate_PV(ds)

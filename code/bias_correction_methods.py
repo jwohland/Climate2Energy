@@ -6,7 +6,15 @@ from utils import *
 import numpy as np
 import pandas as pd
         
-def bias_correction(reference,model,da,method="basic_quantile"):
+def bias_correct_per_loc(reference,model,da,method="basic_quantile"):
+    """
+    Computes bias correction using the model output during historical period (model)
+    and the ground truth (reference) and applies  the correction to future model output (da).
+
+    reference, model and da have to be xr.DataArrays at a single location
+
+   
+    """
     if np.isnan(da).all():
         return da
     else:
@@ -14,9 +22,12 @@ def bias_correction(reference,model,da,method="basic_quantile"):
         return bc.correct(method=method)
         
 
-def bias_correct(ds, var, method="basic_quantile"):
-    """takes a data array da of a chosen variable var, and returns the
-    bias corrected version (using package bias_correction)."""
+def bias_correct_dataset(ds, var, method="basic_quantile"):
+    """
+    takes a data array da of a chosen variable var, and returns the
+    bias corrected version (using package bias_correction).
+    
+    """
     ref_file = f"../output/{var}_ERA5.nc"
     mod_file = f"../output/hist_{var}.nc"
     # making sure that the reference and model data is available
@@ -31,13 +42,11 @@ def bias_correct(ds, var, method="basic_quantile"):
     if var == "temperature":
         reference = temp_cel(reference)
     model = zero_mean_longitudes(xr.open_dataset(mod_file))
-    
-    reference = reference.reindex(lat=ds[var].coords['lat'], lon=ds[var].coords['lon'])
-    model = model.reindex(lat=ds[var].coords['lat'], lon=ds[var].coords['lon'])
+    # the reference dataset has slightly different values for the dimension "lat" (max 10E-14) due to different segmentation in cdo/python. this fixes it
+    reference["lat"] = model.lat
     # bias_correction
-    #print(reference[var].coords['lat'], model[var].coords['lat'], ds[var].coords['lat'])
     corrected = xr.apply_ufunc(
-        bias_correction, reference[var], model[var], ds[var], vectorize=True, 
+        bias_correct_per_loc, reference[var], model[var], ds[var], vectorize=True, 
         input_core_dims=[["time"], ["time"],["time"]], exclude_dims=set(("time",)), 
         output_core_dims = [["time"]], kwargs={"method": method}
     )

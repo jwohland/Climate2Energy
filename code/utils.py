@@ -17,6 +17,7 @@ def temp_cel(ds):
     """
     if "temperature" in ds.data_vars:
         ds["temperature"] = ds["temperature"] - 273.15
+        ds["temperature"].attrs["units"] = "degrees C"
         return ds 
     else:
         "temperature is not in this dataset"
