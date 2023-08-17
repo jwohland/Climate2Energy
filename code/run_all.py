@@ -13,7 +13,7 @@ ds_wind = zero_mean_longitudes(ds).sel(lon=slice(-15,50),lat=slice(30,75)).isel(
 ds_wind["s_hub"] = np.sqrt(ds_wind["U"]**2+ds_wind["V"]**2)
 
 ds = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h2.nc")
-ds_PV = zero_mean_longitudes(ds)
+ds_PV = zero_mean_longitudes(ds).rename({"FSDS":"global_horizontal"})
 ds_t = zero_mean_longitudes(xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h1.nc"))
 ds_PV["temperature"] = ds_t["TREFHT"]
 ds_PV = ds_PV.sel(lon=slice(-15,50),lat=slice(30,75))
@@ -22,7 +22,7 @@ ds_PV["time"] = ds_PV.indexes[
 ].to_datetimeindex()  # time index that GSEE understands
 
 # Step 1: Bias correction 
-for var in ["temperature", "FSDS"]:
+for var in ["temperature", "global_horizontal"]:
     ds_PV[var] = bias_correct_dataset(ds_PV, var)
 
 ds_wind = bias_correct_dataset(ds_wind, "s_hub")

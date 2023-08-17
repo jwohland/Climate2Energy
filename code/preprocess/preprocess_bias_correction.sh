@@ -33,7 +33,7 @@ done
 
 rm /net/xenon/climphys/lbloin/energy_boost/tmp_*.nc
 
-# === CONCATENATING HISTORICAL MODEL DATA ===
+# # === CONCATENATING HISTORICAL MODEL DATA ===
 
 for mem in 0900 #1000 1100 1200 1300 1400 1500 todo: add all members
     do

@@ -31,16 +31,14 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
     ref_file = f"../output/{var}_ERA5.nc"
     mod_file = f"../output/hist_{var}.nc"
     # making sure that the reference and model data is available
-    if (
-        glob.glob(ref_file) == []
-        or glob.glob(mod_file) == []
-    ):
-        print("missing files")
-        subprocess.run("./preprocess_bias_correction.sh")
+    if glob.glob(ref_file) == []:
+        print(f"missing reference ground truth file {var}")
+        subprocess.run(["bash", f"preprocess/preprocess_{var}_ERA5.sh"])
+    if glob.glob(mod_file) == []:
+        print(f"missing historical model file for {var}")
+        subprocess.run(["bash", f"preprocess/./preprocess_{var}_model_hist.sh"])
     # open reference and model data
     reference = zero_mean_longitudes(xr.open_dataset(ref_file))
-    if var == "temperature":
-        reference = temp_cel(reference)
     model = zero_mean_longitudes(xr.open_dataset(mod_file))
     # the reference dataset has slightly different values for the dimension "lat" (max 10E-14) due to different segmentation in cdo/python. this fixes it
     reference["lat"] = model.lat
