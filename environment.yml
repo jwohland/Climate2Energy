@@ -12,3 +12,5 @@ dependencies:
   - nc-time-axis
   - bias_correction
   - tqdm
+  - windpowerlib
+  - gsee
