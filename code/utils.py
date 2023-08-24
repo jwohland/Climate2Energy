@@ -11,6 +11,18 @@ def zero_mean_longitudes(ds):
     ds = ds.sortby("lon")
     return ds
 
+def temp_cel(ds):
+    """
+    returns the temperature dataset ds in celsius
+    """
+    if "temperature" in ds.data_vars:
+        ds["temperature"] = ds["temperature"] - 273.15
+        ds["temperature"].attrs["units"] = "degrees C"
+        return ds 
+    else:
+        "temperature is not in this dataset"
+        return None
+
 def store_as_pandas_dataframe(ds, name):
     """
 
@@ -19,4 +31,3 @@ def store_as_pandas_dataframe(ds, name):
     :return:
     """
     ds.to_pandas().to_csv("../output/" + name + ".csv")
-
