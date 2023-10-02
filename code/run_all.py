@@ -30,7 +30,8 @@ ds_PV["time"] = ds_PV.indexes[
 ].to_datetimeindex()  # time index that GSEE understands
 
 
-# Step 1: Bias correction
+# Step 1: Bias correction 
+print("Files opened. Next: bias correction")
 ds_corr_PV = xr.Dataset()
 for var in ["temperature", "global_horizontal"]:
     print(var)
@@ -40,16 +41,20 @@ print("s_hub")
 ds_corr_wind = bias_correct_dataset(ds_wind, "s_hub").to_dataset(name="s_hub")
 
 # Step 2: Calculate capacity factors
+print("Bias correction finished. Next: conversion to capacity factors")
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
+
 ds_CF_wind = convert_winds(
     ds_corr_wind, "Wind_power_2015.nc"  # TODO: fix hardcoded year
 )  # this expects that ds has variable called s_hub with hub height winds
 
+print("Capacity factors computes. Next: country subsets and saving data")
 # Step 3: subset countries
 ds_CF_PV_countries = country_means(ds_CF_PV)
 ds_CF_wind_countries = country_means(ds_CF_wind)
 
 # Step4: Save data
+
 # wind
 for i in range(3):
     ds_tmp = ds_CF_wind_countries.isel(
@@ -60,3 +65,5 @@ for i in range(3):
 
 # PV
 store_as_pandas_dataframe(ds_CF_PV_countries["pv"], name="CF_PV")
+
+print("Everything finished and saved")
