@@ -37,7 +37,7 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
         subprocess.run(["bash", f"preprocess/preprocess_{var}_ERA5.sh"])
     if glob.glob(mod_file) == []:
         print(f"missing historical model file for {var}")
-        subprocess.run(["bash", f"preprocess/./preprocess_{var}_model_hist.sh"])
+        subprocess.run(["bash", f"preprocess/preprocess_{var}_model_hist.sh"])
     # open reference and model data
     reference = zero_mean_longitudes(xr.open_dataset(ref_file))
     model = zero_mean_longitudes(xr.open_dataset(mod_file))
