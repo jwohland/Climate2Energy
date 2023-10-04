@@ -6,10 +6,10 @@ from utils import *
 import numpy as np
 
 print("open files")
+year = "2016" #can be any year between 2016 and 2034
+data_path = "/net/meso/climphys/cesm212/b.e212.BSSP370cmip6.f09_g17.001.2005.ens001/archive/atm/hist/b.e212.BSSP370cmip6.f09_g17.001.2005.ens001.cam"
 
-data_path = "/net/xenon/climphys/lbloin/energy_boost/"
-
-ds = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_6h.nc")
+ds = xr.open_dataset(data_path + f".h3.{year}-01-01-00000.nc")
 ds_wind = (
     zero_mean_longitudes(ds).sel(lon=slice(-15, 50), lat=slice(30, 75)).isel(lev=31)
 )
@@ -18,10 +18,10 @@ ds_wind = ds_wind.drop(
     "lev"
 )  # temporary fix to avoid crash - will be fixed when interpolated (bias correction can't have empty lev)
 
-ds = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h2.nc")
-ds_PV = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})
+ds = xr.open_dataset(data_path + f".h2.{year}-01-01-00000.nc")
+ds_PV = zero_mean_longitudes(ds).rename({"FSDS":"global_horizontal"})
 ds_t = zero_mean_longitudes(
-    xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h1.nc")
+    xr.open_dataset(data_path + f".h1.{year}-01-01-00000.nc")
 )
 ds_PV["temperature"] = ds_t["TREFHT"]
 ds_PV = ds_PV.sel(lon=slice(-15, 50), lat=slice(30, 75))
