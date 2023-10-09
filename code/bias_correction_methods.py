@@ -5,28 +5,29 @@ import glob
 from utils import *
 import numpy as np
 import pandas as pd
-        
-def bias_correct_per_loc(reference,model,da,method="basic_quantile"):
+
+
+def bias_correct_per_loc(reference, model, da, method="basic_quantile"):
     """
     Computes bias correction using the model output during historical period (model)
     and the ground truth (reference) and applies  the correction to future model output (da).
 
     reference, model and da have to be xr.DataArrays at a single location
 
-   
+
     """
     if np.isnan(da).all():
         return da
     else:
-        bc = BiasCorrection(pd.Series(reference),pd.Series(model), pd.Series(da))
+        bc = BiasCorrection(pd.Series(reference), pd.Series(model), pd.Series(da))
         return bc.correct(method=method)
-        
+
 
 def bias_correct_dataset(ds, var, method="basic_quantile"):
     """
     takes a data array da of a chosen variable var, and returns the
     bias corrected version (using package bias_correction).
-    
+
     """
     ref_file = f"../output/{var}_ERA5.nc"
     mod_file = f"../output/hist_{var}.nc"
@@ -44,9 +45,15 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
     reference["lat"] = model.lat
     # bias_correction
     corrected = xr.apply_ufunc(
-        bias_correct_per_loc, reference[var], model[var], ds[var], vectorize=True, 
-        input_core_dims=[["time"], ["time"],["time"]], exclude_dims=set(("time",)), 
-        output_core_dims = [["time"]], kwargs={"method": method}
+        bias_correct_per_loc,
+        reference[var],
+        model[var],
+        ds[var],
+        vectorize=True,
+        input_core_dims=[["time"], ["time"], ["time"]],
+        exclude_dims=set(("time",)),
+        output_core_dims=[["time"]],
+        kwargs={"method": method},
     )
-    corrected["time"] = ds["time"] # to restore time coordinate in dataarray
+    corrected["time"] = ds["time"]  # to restore time coordinate in dataarray
     return corrected

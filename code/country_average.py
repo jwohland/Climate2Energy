@@ -62,6 +62,7 @@ def cut_out_countries(ds):
         ds_list.append(ds_country)
     return xr.concat(ds_list, dim="country")
 
+
 def country_means(ds, method="all"):
     """
     Aggregate over a country
@@ -72,9 +73,9 @@ def country_means(ds, method="all"):
     :param ds:
     :return:
     """
-    ds = ds.transpose(...,"lat","lon") #salem needs [lat, lon] as last coordinates
+    ds = ds.transpose(..., "lat", "lon")  # salem needs [lat, lon] as last coordinates
     ds = cut_out_countries(ds)
-    if method ==  "all":
+    if method == "all":
         ds = ds.mean(dim=["lat", "lon"], skipna=True)
     return ds
 
@@ -87,4 +88,3 @@ def store_as_pandas_dataframe(da, name):
     :return:
     """
     da.to_pandas().to_csv("../output/" + name + ".csv")
-

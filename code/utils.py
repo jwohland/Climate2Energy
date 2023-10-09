@@ -7,9 +7,10 @@ def zero_mean_longitudes(ds):
     :param ds:
     :return:
     """
-    ds.coords['lon'] = (ds.coords['lon'] + 180) % 360 - 180
+    ds.coords["lon"] = (ds.coords["lon"] + 180) % 360 - 180
     ds = ds.sortby("lon")
     return ds
+
 
 def temp_cel(ds):
     """
@@ -18,10 +19,11 @@ def temp_cel(ds):
     if "temperature" in ds.data_vars:
         ds["temperature"] = ds["temperature"] - 273.15
         ds["temperature"].attrs["units"] = "degrees C"
-        return ds 
+        return ds
     else:
         "temperature is not in this dataset"
         return None
+
 
 def store_as_pandas_dataframe(ds, name):
     """
