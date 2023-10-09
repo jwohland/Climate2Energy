@@ -48,5 +48,5 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
         input_core_dims=[["time"], ["time"],["time"]], exclude_dims=set(("time",)), 
         output_core_dims = [["time"]], kwargs={"method": method}
     )
-
+    corrected["time"] = ds["time"] # to restore time coordinate in dataarray
     return corrected
