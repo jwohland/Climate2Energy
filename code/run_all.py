@@ -6,10 +6,11 @@ from utils import *
 import numpy as np
 
 print("open files")
+year = "2016" #can be any year between 2016 and 2034
+data_path = "/net/meso/climphys/cesm212/b.e212.BSSP370cmip6.f09_g17.001.2005.ens001/archive/atm/hist/b.e212.BSSP370cmip6.f09_g17.001.2005.ens001.cam"
 
-data_path = "/net/xenon/climphys/lbloin/energy_boost/"
+ds = xr.open_dataset(data_path + f".h3.{year}-01-01-00000.nc")
 # Wind
-ds = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_6h.nc")
 ds = (
     zero_mean_longitudes(ds)
     .sel(lon=slice(-15, 50), lat=slice(30, 75))  # choose Europe
@@ -24,15 +25,20 @@ ds_orog = zero_mean_longitudes(ds_orog).sel(lon=slice(-15, 50), lat=slice(30, 75
 ds_orog = (
     ds_orog["PHIS"] / 9.80665
 )  # geopotential reported in m**2/s**2 and divided by earth acceleration according to https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
-ds_combined = ds_wind.to_dataset(name="S")
+ds_combined = ds_wind.to_dataset(name="S")  # todo maybe this should be s_hub
 ds_combined["height"] = ds_geop - ds_orog
 ds_interpolated, alpha = interpolate_wind_xr(ds_combined)
 
+# maybe keep the following
+ds_wind = ds_wind.drop(
+    "lev"
+)  # temporary fix to avoid crash - will be fixed when interpolated (bias correction can't have empty lev)
+  
 # Solar
-ds = xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h2.nc")
+ds = xr.open_dataset(data_path + f".h2.{year}-01-01-00000.nc")
 ds_PV = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})
 ds_t = zero_mean_longitudes(
-    xr.open_dataset(data_path + "CESM2_r1i1p1_2015_daily_h1.nc")
+    xr.open_dataset(data_path + f".h1.{year}-01-01-00000.nc")
 )
 ds_PV["temperature"] = ds_t["TREFHT"]
 ds_PV = ds_PV.sel(lon=slice(-15, 50), lat=slice(30, 75))
@@ -40,30 +46,46 @@ ds_PV["time"] = ds_PV.indexes[
     "time"
 ].to_datetimeindex()  # time index that GSEE understands
 
-# Step 1: Bias correction
-for var in ["temperature", "global_horizontal"]:
-    ds_PV[var] = bias_correct_dataset(ds_PV, var)
+# Step 1: Bias correction 
+print("Files opened. Next: bias correction")
+ds_corr_PV = xr.Dataset()
 
-ds_wind = bias_correct_dataset(ds_interpolated, "S")
-ds_wind = extrapolate_wind_xr(
-    ds_wind, 100, 120, alpha
+for var in ["temperature", "global_horizontal"]:
+    print(var)
+    ds_corr_PV[var] = bias_correct_dataset(ds_PV, var)
+
+
+print("s_hub")
+ds_corr_wind = bias_correct_dataset(ds_interpolated, "S")  # todo Luna had bias_correct_dataset(ds_wind, "s_hub").to_dataset(name="s_hub")
+ds_corr_wind = extrapolate_wind_xr(
+    ds_corr_wind, 100, 120, alpha
 )
 
+
 # Step 2: Calculate capacity factors
-ds_CF_PV = calculate_PV(ds_PV, params=None)
+print("Bias correction finished. Next: conversion to capacity factors")
+ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
+
 ds_CF_wind = convert_winds(
-    ds_wind, "Wind_power_2015.nc"
+    ds_corr_wind, "Wind_power_2015.nc"  # TODO: fix hardcoded year
 )  # this expects that ds has variable called s_hub with hub height winds
 
+print("Capacity factors computes. Next: country subsets and saving data")
 # Step 3: subset countries
 ds_CF_PV_countries = country_means(ds_CF_PV)
 ds_CF_wind_countries = country_means(ds_CF_wind)
 
 # Step4: Save data
+
 # wind
 for i in range(3):
-    ds_tmp = ds_CF_wind_countries.isel(turbine=i)
+    ds_tmp = ds_CF_wind_countries.isel(
+        turbine=i
+    ).squeeze()  # TODO: squeeze just not be needed once interpolation is done
     turbine_name = str(ds_tmp.turbine.values)
     store_as_pandas_dataframe(ds_tmp["CF_wind"], name="CF_" + turbine_name)
+
 # PV
 store_as_pandas_dataframe(ds_CF_PV_countries["pv"], name="CF_PV")
+
+print("Everything finished and saved")
