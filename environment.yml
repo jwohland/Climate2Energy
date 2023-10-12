@@ -1,4 +1,4 @@
-name: CESM2energy
+name: CESM2energy_dev
 channels:
   - conda-forge
   - defaults
@@ -13,4 +13,21 @@ dependencies:
   - bias_correction
   - tqdm
   - windpowerlib
-  - gsee
+# gsee pins an old version of xarray, but the github (developer) version solves this. This is how to install it
+  - basemap >= 1.1.0
+  - Cython >= 0.28.5
+  - dask >= 2.8
+  - distributed >= 2.8
+  - joblib >= 0.12
+  - netcdf4
+  - numpy >= 1.15.0
+  - pandas >= 1.0, < 1.1
+  - pyephem >= 3.7.6.0
+  - scipy >= 1.1.0
+  - seaborn >= 0.9.0
+  - xarray >= 0.16, < 0.17
+  - pvlib-python >= 0.6.3
+ 
+  - pip
+  - pip:
+    - git+https://github.com/renewables-ninja/gsee
