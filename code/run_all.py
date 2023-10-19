@@ -6,58 +6,52 @@ from utils import *
 
 print("open files")
 year = "2016"  # can be any year between 2016 and 2034
-
-
+####################
 # Step 0: Open data
-ds_wind, ds_PV = open_wind_solar(year, test_data=True)
+####################
+ds_wind, ds_PV = open_wind_solar(
+    year, test_data=False
+)  # test_data=True allows for quick test with only 10 timesteps
 print("Files opened. Next: bias correction")
 
+####################
 # Step 1: Bias correction
+####################
 ds_corr_PV = xr.Dataset()
 for var in ["temperature", "global_horizontal"]:
     print(var)
     ds_corr_PV[var] = bias_correct_dataset(ds_PV, var)
 
-# Extrapolate model to 100m (i.e., ERA5 height), then bias correct, then extrapolate to 120
+# Extrapolate model to 100m (i.e., ERA5 height), then bias correct, then extrapolate to 120m
 ds_interpolated, alpha = interpolate_wind_xr(
     ds_wind, 100
 )  # careful: this outputs s_hub even though these are 100m winds
-ds_corr_wind = bias_correct_dataset(
-    ds_interpolated, "s_hub"
+ds_corr_wind = bias_correct_dataset(ds_interpolated, "s_hub")
+ds_corr_wind = extrapolate_wind_xr(ds_corr_wind, 100, 120, alpha).to_dataset(
+    name="s_hub"
 )
-ds_corr_wind = extrapolate_wind_xr(
-    ds_corr_wind, 100, 120, alpha
-).to_dataset(name="s_hub")  # todo this throws an error because ds_corr_wind currently is a dataArray  but extrapolate_winds expects
-# a dataset with a variable called S
-
-
-# Step 2: Calculate capacity factors
 print("Bias correction finished. Next: conversion to capacity factors")
+
+####################
+# Step 2: Calculate capacity factors
+####################
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
-
 ds_CF_wind = convert_winds(
-    ds_corr_wind.to_dataset(
-        name="s_hub"
-    ),  # TODO: This to_dataset should not be needed.
-    "Wind_power_2015.nc",  # TODO: fix hardcoded year
+    ds_corr_wind,
+    "Wind_power_" + str(year) + ".nc",  # TODO: maybe remove completely
 )  # this expects that ds has variable called s_hub with hub height winds
-
 print("Capacity factors computed. Next: country subsets and saving data")
+
 # Step 3: subset countries
 ds_CF_PV_countries = country_means(ds_CF_PV)
 ds_CF_wind_countries = country_means(ds_CF_wind)
 
 # Step4: Save data
-
 # wind
 for i in range(3):
-    ds_tmp = ds_CF_wind_countries.isel(
-        turbine=i
-    ).squeeze()  # TODO: squeeze just not be needed once interpolation is done
+    ds_tmp = ds_CF_wind_countries.isel(turbine=i)
     turbine_name = str(ds_tmp.turbine.values)
     store_as_pandas_dataframe(ds_tmp["CF_wind"], name="CF_" + turbine_name)
-
 # PV
 store_as_pandas_dataframe(ds_CF_PV_countries["pv"], name="CF_PV")
-
 print("Everything finished and saved")
