@@ -56,4 +56,4 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
         kwargs={"method": method},
     )
     corrected["time"] = ds["time"]  # to restore time coordinate in dataarray
-    return corrected.drop("lev", errors="ignore")
+    return corrected.squeeze()
