@@ -128,14 +128,14 @@ def interpolate_wind_xr(ds, output_height=120):
     return ds_hub, alpha
 
 
-def extrapolate_wind_xr(ds, input_height, output_height, alpha):
+def extrapolate_wind_xr(da, input_height, output_height, alpha):
     """
     Extrapolate wind speeds in ds from the input height to the output height using
     the power law and precomputed alpha values (per timestep and location)
-    :param ds:
+    :param da: DataArray of wind speeds at input height
     :param input_height:
     :param output_height:
     :param alpha:
     :return:
     """
-    return ds["S"] * (output_height / input_height) ** alpha
+    return da * (output_height / input_height) ** alpha
