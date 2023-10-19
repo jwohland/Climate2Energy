@@ -1,4 +1,61 @@
 import numpy as np
+import xarray as xr
+
+
+def select_Europe(ds):
+    return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
+
+
+def open_wind_solar(year, test_data=False):
+    """
+    Open the data needed for wind and solar energy calculation and output
+    as xr.Datasets.
+
+    :param year:
+    :param test_data: if set to True, only first 10 time steps are kept for testing
+    :return:
+        ds_wind:
+            - wind speeds at 2 adjacent levels
+            - height above ground
+        ds_solar:
+            - global horizontal radiation
+            - temperature
+    """
+    data_path = "/net/meso/climphys/cesm212/b.e212.BSSP370cmip6.f09_g17.001.2005.ens001/archive/atm/hist/b.e212.BSSP370cmip6.f09_g17.001.2005.ens001.cam"
+    # Wind
+    ds = xr.open_dataset(data_path + f".h3.{year}-01-01-00000.nc")
+    ds = select_Europe(
+        zero_mean_longitudes(ds).isel(lev=slice(30, 32))  # lowermost 2 levels
+    )
+    ds_wind = np.sqrt(ds["U"] ** 2 + ds["V"] ** 2)
+    ds_geop = ds["Z3"]
+    ds_orog = xr.open_dataset(
+        "/net/meso/climphys/cesm212/inputfiles/BSSP370cmip6/atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_c170103.nc"
+    )
+    ds_orog = select_Europe(zero_mean_longitudes(ds_orog))
+    ds_orog = (
+        ds_orog["PHIS"] / 9.80665
+    )  # geopotential reported in m**2/s**2 and divided by earth acceleration according to https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
+    ds_wind = ds_wind.to_dataset(name="S")  # call winds S here because they are still at model level
+    ds_wind["height"] = ds_geop - ds_orog
+
+    # Solar
+    ds = xr.open_dataset(data_path + f".h2.{year}-01-01-00000.nc")
+    ds_PV = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})
+    ds_t = zero_mean_longitudes(
+        xr.open_dataset(data_path + f".h1.{year}-01-01-00000.nc")
+    )
+    ds_PV["temperature"] = ds_t["TREFHT"]
+    ds_PV = ds_PV.sel(lon=slice(-15, 50), lat=slice(30, 75))
+    ds_PV["time"] = ds_PV.indexes[
+        "time"
+    ].to_datetimeindex()  # time index that GSEE understands
+
+    # Keep only few timesteps for test data
+    if test_data:
+        ds_wind = ds_wind.isel(time=slice(0, 10))
+        ds_PV = ds_PV.isel(time=slice(0, 10))
+    return ds_wind, ds_PV
 
 
 def zero_mean_longitudes(ds):
@@ -65,9 +122,9 @@ def interpolate_wind_xr(ds, output_height=120):
         ds["S"].isel(lev=height_min)
         * (output_height / ds["height"].isel(lev=height_min)) ** alpha
     )
-    ds_hub = y_hub.to_dataset(name="S_hub")
-    ds_hub["S_hub"].attrs = {"long_name": "Wind speed at hub height [m/s]"}
-    ds_hub.drop(vertical_dim)
+    ds_hub = y_hub.to_dataset(name="s_hub")
+    ds_hub["s_hub"].attrs = {"long_name": "Wind speed at hub height [m/s]"}
+    ds_hub = ds_hub.drop(vertical_dim)
     return ds_hub, alpha
 
 
@@ -81,4 +138,4 @@ def extrapolate_wind_xr(ds, input_height, output_height, alpha):
     :param alpha:
     :return:
     """
-    return ds["S"]*(output_height / input_height) ** alpha
+    return ds["S"] * (output_height / input_height) ** alpha
