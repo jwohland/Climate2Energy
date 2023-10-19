@@ -10,26 +10,24 @@ year = "2016"  # can be any year between 2016 and 2034
 
 # Step 0: Open data
 ds_wind, ds_PV = open_wind_solar(year, test_data=True)
-ds_interpolated, alpha = interpolate_wind_xr(
-    ds_wind, 100
-)  # todo bias correct wants the output to be called s_hub
-
+print("Files opened. Next: bias correction")
 
 # Step 1: Bias correction
-print("Files opened. Next: bias correction")
 ds_corr_PV = xr.Dataset()
 for var in ["temperature", "global_horizontal"]:
     print(var)
     ds_corr_PV[var] = bias_correct_dataset(ds_PV, var)
 
-
-print("s_hub")
+# Extrapolate model to 100m (i.e., ERA5 height), then bias correct, then extrapolate to 120
+ds_interpolated, alpha = interpolate_wind_xr(
+    ds_wind, 100
+)  # careful: this outputs s_hub even though these are 100m winds
 ds_corr_wind = bias_correct_dataset(
-    ds_interpolated, "S"
-)  # todo Luna had bias_correct_dataset(ds_wind, "s_hub").to_dataset(name="s_hub")
+    ds_interpolated, "s_hub"
+)
 ds_corr_wind = extrapolate_wind_xr(
     ds_corr_wind, 100, 120, alpha
-)  # todo this throws an error because ds_coorr_wind currently is a dataArray  but extrapolate_winds expects
+).to_dataset(name="s_hub")  # todo this throws an error because ds_corr_wind currently is a dataArray  but extrapolate_winds expects
 # a dataset with a variable called S
 
 
