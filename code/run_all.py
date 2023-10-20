@@ -38,7 +38,7 @@ print("Bias correction finished. Next: conversion to capacity factors")
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
 ds_CF_wind = convert_winds(
     ds_corr_wind,
-    "Wind_power_" + str(year) + ".nc",  # TODO: maybe remove completely
+    "Wind_power_" + str(year) + ".nc",  # TODO: either remove completely or store intermediate PV output as well before computing country averages
 )  # this expects that ds has variable called s_hub with hub height winds
 print("Capacity factors computed. Next: country subsets and saving data")
 
