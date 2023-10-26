@@ -5,6 +5,29 @@ import xarray as xr
 def select_Europe(ds):
     return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
 
+def find_height(ds):
+    """
+    Calculates the the height of dataset model levels
+    :param ds: 
+    :return:
+        ds:
+        - same dataset as input, with added data array ds["height"]
+    """
+    if "Z3" not in ds.data_vars:
+        print("Error: dataset does not have variable 'Z3', necessary for height calculation. Return ds without height information.")
+        return ds
+    ds_orog = xr.open_dataset(
+        "/net/meso/climphys/cesm212/inputfiles/BSSP370cmip6/atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_c170103.nc"
+    )
+    ds_orog = select_Europe(
+        zero_mean_longitudes(ds_orog)
+    )
+    ds_orog = (
+        ds_orog["PHIS"] / 9.80665
+    )  # geopotential reported in m**2/s**2 and divided by earth acceleration according to https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
+    
+    ds["height"] = ds["Z3"] - ds_orog
+    return ds
 
 def open_wind_solar(year, test_data=False):
     """
@@ -28,16 +51,18 @@ def open_wind_solar(year, test_data=False):
         zero_mean_longitudes(ds).isel(lev=slice(30, 32))  # lowermost 2 levels
     )
     ds_wind = np.sqrt(ds["U"] ** 2 + ds["V"] ** 2)
-    ds_geop = ds["Z3"]
-    ds_orog = xr.open_dataset(
-        "/net/meso/climphys/cesm212/inputfiles/BSSP370cmip6/atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_c170103.nc"
-    )
-    ds_orog = select_Europe(zero_mean_longitudes(ds_orog))
-    ds_orog = (
-        ds_orog["PHIS"] / 9.80665
-    )  # geopotential reported in m**2/s**2 and divided by earth acceleration according to https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
     ds_wind = ds_wind.to_dataset(name="S")  # call winds S here because they are still at model level
-    ds_wind["height"] = ds_geop - ds_orog
+    ds_wind["Z3"] = ds["Z3"]
+    ds_wind = find_height(ds_wind)
+    # ds_orog = xr.open_dataset(
+    #     "/net/meso/climphys/cesm212/inputfiles/BSSP370cmip6/atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_c170103.nc"
+    # )
+    # ds_orog = select_Europe(zero_mean_longitudes(ds_orog))
+    # ds_orog = (
+    #     ds_orog["PHIS"] / 9.80665
+    # )  # geopotential reported in m**2/s**2 and divided by earth acceleration according to https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
+    
+    # ds_wind["height"] = ds_geop - ds_orog
 
     # Solar
     ds = xr.open_dataset(data_path + f".h2.{year}-01-01-00000.nc")
