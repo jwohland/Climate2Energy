@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import warnings
 
 
 def select_Europe(ds):
@@ -66,9 +67,11 @@ def open_wind_solar(year, test_data=False):
     )
     ds_PV["temperature"] = ds_t["TREFHT"]
     ds_PV = ds_PV.sel(lon=slice(-15, 50), lat=slice(30, 75))
-    ds_PV["time"] = ds_PV.indexes[
-        "time"
-    ].to_datetimeindex()  # time index that GSEE understands
+    with warnings.catch_warnings():  # to_datetimeindex throws a warning because CESM uses non-leap year calendar. We verified that this is not a problem (see notebook 13) and catch the warning here.
+        warnings.simplefilter("ignore")
+        ds_PV["time"] = ds_PV.indexes[
+            "time"
+        ].to_datetimeindex()  # time index that GSEE understands
 
     # Keep only few timesteps for test data
     if test_data:
