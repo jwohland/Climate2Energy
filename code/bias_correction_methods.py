@@ -5,7 +5,7 @@ import glob
 from utils import *
 import numpy as np
 import pandas as pd
-
+from utils import interpolate_wind_xr, find_height
 
 def bias_correct_per_loc(reference, model, da, method="basic_quantile"):
     """
@@ -41,6 +41,11 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
     # open reference and model data
     reference = zero_mean_longitudes(xr.open_dataset(ref_file))
     model = zero_mean_longitudes(xr.open_dataset(mod_file))
+    if var == "s_hub":
+        # get height information
+        model["Z3"] = zero_mean_longitudes(xr.open_dataset("../output/hist_Z3.nc"))["Z3"]
+        model = find_height(model)
+        model = interpolate_wind_xr(model, output_height=100)[0] # we want only s_hub, not the alpha parameter here
     # the reference dataset has slightly different values for the dimension "lat" (max 10E-14) due to different segmentation in cdo/python. this fixes it
     reference["lat"] = model.lat
     # bias_correction
@@ -56,4 +61,4 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
         kwargs={"method": method},
     )
     corrected["time"] = ds["time"]  # to restore time coordinate in dataarray
-    return corrected
+    return corrected.squeeze()
