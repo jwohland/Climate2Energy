@@ -2,10 +2,15 @@ from bias_correction_methods import *
 from conversion_to_CF import *
 from country_average import *
 from utils import *
+import sys
 
 
 print("open files")
-year = "2016"  # can be any year between 2016 and 2034
+try: 
+    year = str(sys.argv[1])  # can be any year between 2016 and 2034
+except IndexError:
+    year = "2016"
+print(year)
 ####################
 # Step 0: Open data
 ####################
@@ -22,6 +27,7 @@ for var in ["temperature", "global_horizontal"]:
     print(var)
     ds_corr_PV[var] = bias_correct_dataset(ds_PV, var)
 
+print("s_hub")
 # Extrapolate model to 100m (i.e., ERA5 height), then bias correct, then extrapolate to 120m
 ds_interpolated, alpha = interpolate_wind_xr(
     ds_wind, 100
@@ -51,7 +57,7 @@ ds_CF_wind_countries = country_means(ds_CF_wind)
 for i in range(3):
     ds_tmp = ds_CF_wind_countries.isel(turbine=i)
     turbine_name = str(ds_tmp.turbine.values)
-    store_as_pandas_dataframe(ds_tmp["CF_wind"], name="CF_" + turbine_name)
+    store_as_pandas_dataframe(ds_tmp["CF_wind"], name=f"CF_{turbine_name}_{year}")
 # PV
-store_as_pandas_dataframe(ds_CF_PV_countries["pv"], name="CF_PV")
+store_as_pandas_dataframe(ds_CF_PV_countries["pv"], name=f"CF_PV_{year}")
 print("Everything finished and saved")
