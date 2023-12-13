@@ -19,7 +19,7 @@ https://github.com/wind-python/windpowerlib/blob/dev/windpowerlib/oedb/power_cur
 
 ### Download population data from NASA/Columbia Uni
 
-After registration, data can be retrieved from the link below. We choose the highest resolution (2.5 minutes).
+After registration, data can be retrieved from the link below. We choose the highest resolution (2.5 minutes). Data must be unzipped and the file `gpw_v4_population_density_adjusted_rev11_2pt5_min.nc` must be moved into the `inputs` folder. 
 
 https://sedac.ciesin.columbia.edu/data/set/gpw-v4-population-density-adjusted-to-2015-unwpp-country-totals-rev11/data-download
 
