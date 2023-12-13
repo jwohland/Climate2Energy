@@ -112,25 +112,23 @@ var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2
 year = 2015  # todo turn this into function parameter
 
 result_list = []  # to store country level results
-for country in demand_params.index:
+for country in demand_params.index:  # todo I think we are missing some countries here that exist in wind and PV CF
+    print(country)
     params = demand_params.loc[
         country
     ]  # country specific heating and cooling parameters
-    tmp_pop = pop_density.sel(country)
+    tmp_pop = pop_density.sel(country=country)
     # computed weighted demand per country
-    weight_list, demand_list = [], []
+    demand_list = []
     for ilat in range(48):
-        print(ilat)
         for ilon in range(53):
             local_population = tmp_pop.isel(lat=ilat, lon=ilon)[var_name].values
             if np.isfinite(local_population):
-                df = convert_xarray_demandninja(ilat, ilon)
-                print("opened")
+                df = convert_xarray_demandninja(ilat, ilon)  # todo data is currently loaded here. Can we do the data opening outside the loop?
                 # can not currently execute demand ninja in this environment
-                demand_list.append(demand_ninja.demand(df.copy) * local_population)
-
-        # todo: need loop over all locations in a country here
-        result = demand_ninja.demand(df.copy(), raw=False, **params)
+                demand_list.append(demand_ninja.demand(df.copy()) * local_population)
+    df_demand = pd.concat(demand_list)  # combine all locations
+    result = df_demand.groupby(df_demand.index).sum()  # country sum
     result["country"] = country
     result_list.append(result)
 results = pd.concat(result_list)
