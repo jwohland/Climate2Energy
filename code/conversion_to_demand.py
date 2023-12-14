@@ -104,15 +104,66 @@ def remap_to_CESM2(ds):
     return ds
 
 
+def parameter_fill_ninja(df):
+    """
+    Some countries that we model do not have paramerts in the demand-ninja inputs.
+
+    Sometimes this is related to the use of different names (Czechia vs. Czech Republic),
+    different spatial aggregation (United Kingdom vs. Great Britain) or because some small countries are
+    not included ('Albania', 'Bosnia and Herzegovina', 'Croatia', 'Montenegro', 'Macedonia',
+    'Serbia', 'Slovenia', 'Latvia').
+
+    These parameter holes are filled here. Justification is given in issue #19 on github.
+    :param country_name:
+    :return:
+    """
+    df.loc["United Kingdom"] = df.loc["Great Britain"]  # slightly different area
+    df.loc["United Kingdom"]["heating_power"] *= 1.025
+    df.loc["United Kingdom"]["cooling_power"] *= 1.025
+    df.loc["Czech Republic"] = df.loc["Czechia"]  # naming mismatch
+    # relatively small countries in SE Europe: replace by mean of neighbors
+    # and scale heating / cooling power by population
+    neighbors = ["Italy", "Austria", "Hungary", "Romania", "Bulgaria", "Greece"]
+    mean_neighbors = df.loc[neighbors].mean()
+    pop_total = pd.read_csv("../inputs/World_bank_population.csv", skiprows=3)[
+        ["Country Name", "2020"]
+    ].set_index(
+        "Country Name"
+    )  # world bank total population data downloaded from https://data.worldbank.org/indicator/SP.POP.TOTL
+    N_ref = int(pop_total.loc[neighbors].mean())
+    for country in [
+        "Albania",
+        "Bosnia and Herzegovina",
+        "Croatia",
+        "Montenegro",
+        "Macedonia",
+        "Serbia",
+        "Slovenia",
+    ]:
+        df.loc[country] = mean_neighbors
+        if country == "Macedonia":
+            N = int(pop_total.loc["North Macedonia"])  # world bank uses "North Macedonia" instead of "Macedonia" which is the correct term today
+        else:
+            N = int(pop_total.loc[country])
+        df.loc[country]["heating_power"] *= N / N_ref
+        df.loc[country]["cooling_power"] *= N / N_ref
+    return df
+
+
 demand_params = pd.read_csv(
     "../inputs/demand_ninja_parameters.csv", index_col=0, skiprows=2
 )
+demand_params = parameter_fill_ninja(demand_params)  # fill missing values
 pop_density = compute_country_population_density()
 var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
 year = 2015  # todo turn this into function parameter
 
 result_list = []  # to store country level results
-for country in demand_params.index:  # todo I think we are missing some countries here that exist in wind and PV CF
+for (
+    country
+) in (
+    demand_params.index
+):
     print(country)
     params = demand_params.loc[
         country
@@ -124,7 +175,9 @@ for country in demand_params.index:  # todo I think we are missing some countrie
         for ilon in range(53):
             local_population = tmp_pop.isel(lat=ilat, lon=ilon)[var_name].values
             if np.isfinite(local_population):
-                df = convert_xarray_demandninja(ilat, ilon)  # todo data is currently loaded here. Can we do the data opening outside the loop?
+                df = convert_xarray_demandninja(
+                    ilat, ilon
+                )  # todo data is currently loaded here. Can we do the data opening outside the loop?
                 # can not currently execute demand ninja in this environment
                 demand_list.append(demand_ninja.demand(df.copy()) * local_population)
     df_demand = pd.concat(demand_list)  # combine all locations
