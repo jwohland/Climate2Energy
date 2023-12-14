@@ -142,7 +142,9 @@ def parameter_fill_ninja(df):
     ]:
         df.loc[country] = mean_neighbors
         if country == "Macedonia":
-            N = int(pop_total.loc["North Macedonia"])  # world bank uses "North Macedonia" instead of "Macedonia" which is the correct term today
+            N = int(
+                pop_total.loc["North Macedonia"]
+            )  # world bank uses "North Macedonia" instead of "Macedonia" which is the correct term today
         else:
             N = int(pop_total.loc[country])
         df.loc[country]["heating_power"] *= N / N_ref
@@ -159,11 +161,7 @@ var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2
 year = 2015  # todo turn this into function parameter
 
 result_list = []  # to store country level results
-for (
-    country
-) in (
-    demand_params.index
-):
+for country in demand_params.index:
     print(country)
     params = demand_params.loc[
         country
