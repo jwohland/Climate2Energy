@@ -20,6 +20,10 @@ def open_xarray_demandninja(year=1990):
     ds_atm = select_Europe(
         zero_mean_longitudes(ds_atm[["FSDS", "TREFHT", "U10", "QREFHT"]])
     )
+    # Correct units so that they match with demandninja
+    ds_ninja["QREFHT"] *= 1000  # CESM2 gives kg/kg but demandninja wants g/kg
+    ds_ninja["U10"] *= (2 / 10) ** 0.14  # power law conversion from 10m to 2m
+    ds_ninja["TREFHT"] -= 273.15  # convert from K to C
     return ds_atm
 
 
@@ -28,9 +32,6 @@ def pick_convert_demandninja(ds, ilat, ilon):
     Pick desired location and convert dataset into pandas dataframe at this location
     """
     ds_tmp = ds.isel(lat=ilat, lon=ilon, drop=True)
-
-    ds_tmp["TREFHT"] -= 273.15  # convert from K to C
-    ds_tmp["U10"] *= (2 / 10) ** 0.14  # brutal correction to get 2m winds
     df = ds_tmp.to_dataframe()
     df = df.rename(
         columns={
@@ -40,11 +41,25 @@ def pick_convert_demandninja(ds, ilat, ilon):
             "QREFHT": "humidity",
         }
     )
-    df["humidity"] *= 1000  # CESM2 gives kg/kg but demandninja wants g/kg
     df.index = df.index.to_datetimeindex(
         unsafe=True
     )  # ninja needs time in datetimeindex format, unsafe is ok because non-leap year have been manually checked
+    # check that values are plausible
+    sense_check_demandninja_inputs(df)
     return df
+
+
+def sense_check_demandninja_inputs(df):
+    """
+    Some plausibility checks on the inputs for the demand calculation
+    :param df:
+    :return:
+    """
+    assert (df.radiation_global_horizontal >= 0).all()  # radiation must be positive
+    assert (np.absolute(df.temperature) <= 100).all()  # temps must be within -100 to 100 °C
+    assert (df.wind_speed_2m >= 0).all()  # wind must be positive
+    assert (df.wind_speed_2m <= 100).all()  # winds cannot be unrealistically high (100 m/s)
+    assert (df.humidity >= 0).all()  # humidity cannot be negative
 
 
 def reformat_demandninja(df):
