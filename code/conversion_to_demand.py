@@ -5,36 +5,45 @@ import demand_ninja  # todo currently is done in seperate environment. Can we in
 import subprocess
 
 
-def convert_xarray_demandninja(ilat, ilon):  # todo when to choose location and country?
+def open_xarray_demandninja(year=1990):
     """
-    Takes climate model inputs (as xarray datasets) and
-    reformats them as pandas timeseries
-    :param ds:
-    :return:
+    open full datasets with variables needed for demand calculation
     """
+    path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/"
+    ds_atm = xr.open_dataset(
+        path
+        + "atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam.h6."
+        + str(year)
+        + "-01-01-03600.nc",
+        chunks={"lat": 10, "lon": 10, "time": 3000},
+    )
+    ds_atm = select_Europe(
+        zero_mean_longitudes(ds_atm[["FSDS", "TREFHT", "U10", "QREFHT"]])
+    )
+    return ds_atm
 
-    # todo the following just creates placeholder data of the right format. This needs to be replaced with actual
-    # todo data once Urs' simulations are completed
-    year = "2015"
-    ds_wind, ds_PV = open_wind_solar(
-        year, test_data=True
-    )  # test_data=True allows for quick test with only 10 timesteps
-    ds_wind = ds_wind.isel(lat=ilat, lon=ilon, drop=True)
-    ds_PV = ds_PV.isel(lat=ilat, lon=ilon, drop=True)
-    df = ds_PV[["global_horizontal", "temperature"]].to_dataframe()
-    df["temperature"] -= 273.15  # convert from K to C
-    ds_wind = (
-        ds_wind["S"].isel(lev=0, drop=True).squeeze() * 0.2
-    )  # brutal correction to get 2m winds
-    ds_wind["time"] = ds_PV["time"]  # time index that GSEE understands
-    df["wind_speed_2m"] = ds_wind.to_dataframe()
-    df["humidity"] = df["wind_speed_2m"] * 0 + np.random.random(
-        df["wind_speed_2m"].size
-    )  # adding humidity as random numbers between 0 and 1
-    df = df.rename(columns={"global_horizontal": "radiation_global_horizontal"})
-    # Need hourly
-    df = df.resample("H").interpolate()
-    # check that output is hourly
+
+def pick_convert_demandninja(ds, ilat, ilon):
+    """
+    Pick desired location and convert dataset into pandas dataframe at this location
+    """
+    ds_tmp = ds.isel(lat=ilat, lon=ilon, drop=True)
+
+    ds_tmp["TREFHT"] -= 273.15  # convert from K to C
+    ds_tmp["U10"] *= (2 / 10) ** 0.14  # brutal correction to get 2m winds
+    df = ds_tmp.to_dataframe()
+    df = df.rename(
+        columns={
+            "FSDS": "radiation_global_horizontal",
+            "TREFHT": "temperature",
+            "U10": "wind_speed_2m",
+            "QREFHT": "humidity",
+        }
+    )
+    df["humidity"] *= 1000  # CESM2 gives kg/kg but demandninja wants g/kg
+    df.index = df.index.to_datetimeindex(
+        unsafe=True
+    )  # ninja needs time in datetimeindex format, unsafe is ok because non-leap year have been manually checked
     return df
 
 
@@ -70,7 +79,7 @@ def compute_country_population_density():
     )
     ds_pop = ds_pop.sel(
         longitude=slice(-15, 50), latitude=slice(75, 30)
-    )  # select Europe todo should I fix the decreasing latitude here?
+    )  # select Europe. I do not use the function because latitude sorting inverted here.
     var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
     ds_pop = ds_pop.isel(
         raster=3, drop=True
@@ -81,7 +90,7 @@ def compute_country_population_density():
     for country in ds_pop_countries.country.values:
         ds_tmp = remap_to_CESM2(
             ds_pop_countries.sel(country=country)
-        )  # todo why does this not work for all countries at once?
+        )  # does not work for all countries at once. This loop is acceptable in terms of performance.
         ds_tmp[var_name] /= ds_tmp[var_name].sum()
         ds_tmp["country"] = country
         ds_list.append(ds_tmp)
@@ -96,9 +105,10 @@ def remap_to_CESM2(ds):
     """
     ds.to_netcdf("../output/pop_tmp.nc")
     subprocess.run(
-        "cdo remapcon,../inputs/CESM_atm_grid.txt ../output/pop_tmp.nc ../output/pop_remapped.nc",
+        "cdo -s remapcon,../inputs/CESM_atm_grid.txt ../output/pop_tmp.nc ../output/pop_remapped.nc",
         shell=True,
-    )  # use cdo to remap todo  Warning (find_time_vars): Time variable >raster< not found!
+    )  # use cdo to remap where -s avoids output  weights and domain size output and -w avoids a "Time variable >raster< not found!" warning. (data has no time dimension)
+    # todo  Warning (find_time_vars): Time variable >raster< not found!
     ds = xr.open_dataset("../output/pop_remapped.nc")
     ds = select_Europe(zero_mean_longitudes(ds))
     return ds
@@ -117,10 +127,12 @@ def parameter_fill_ninja(df):
     :param country_name:
     :return:
     """
-    df.loc["United Kingdom"] = df.loc["Great Britain"]  # slightly different area
+    df.rename(
+        index={"Great Britain": "United Kingdom"}, inplace=True
+    )  # slightly different area
     df.loc["United Kingdom"]["heating_power"] *= 1.025
     df.loc["United Kingdom"]["cooling_power"] *= 1.025
-    df.loc["Czech Republic"] = df.loc["Czechia"]  # naming mismatch
+    df.rename(index={"Czechia": "Czech Republic"}, inplace=True)  # naming mismatch
     # relatively small countries in SE Europe: replace by mean of neighbors
     # and scale heating / cooling power by population
     neighbors = ["Italy", "Austria", "Hungary", "Romania", "Bulgaria", "Greece"]
@@ -158,7 +170,10 @@ demand_params = pd.read_csv(
 demand_params = parameter_fill_ninja(demand_params)  # fill missing values
 pop_density = compute_country_population_density()
 var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
+
 year = 2015  # todo turn this into function parameter
+ds_ninja = open_xarray_demandninja(year)
+ds_ninja.load()  # loading here once speeds up the following loop
 
 result_list = []  # to store country level results
 for country in demand_params.index:
@@ -169,14 +184,11 @@ for country in demand_params.index:
     tmp_pop = pop_density.sel(country=country)
     # computed weighted demand per country
     demand_list = []
-    for ilat in range(48):
-        for ilon in range(53):
+    for ilat in range(ds_ninja.lat.size):
+        for ilon in range(ds_ninja.lon.size):
             local_population = tmp_pop.isel(lat=ilat, lon=ilon)[var_name].values
             if np.isfinite(local_population):
-                df = convert_xarray_demandninja(
-                    ilat, ilon
-                )  # todo data is currently loaded here. Can we do the data opening outside the loop?
-                # can not currently execute demand ninja in this environment
+                df = pick_convert_demandninja(ds_ninja, ilat, ilon)
                 demand_list.append(demand_ninja.demand(df.copy()) * local_population)
     df_demand = pd.concat(demand_list)  # combine all locations
     result = df_demand.groupby(df_demand.index).sum()  # country sum
@@ -191,5 +203,3 @@ for demand_type in ["heating_demand", "cooling_demand"]:
     results.loc[demand_type].to_csv(
         "../output/" + demand_type + "_" + str(year) + ".csv"
     )
-
-# Output: dataframe with
