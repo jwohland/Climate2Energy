@@ -21,9 +21,9 @@ def open_xarray_demandninja(year=1990):
         zero_mean_longitudes(ds_atm[["FSDS", "TREFHT", "U10", "QREFHT"]])
     )
     # Correct units so that they match with demandninja
-    ds_ninja["QREFHT"] *= 1000  # CESM2 gives kg/kg but demandninja wants g/kg
-    ds_ninja["U10"] *= (2 / 10) ** 0.14  # power law conversion from 10m to 2m
-    ds_ninja["TREFHT"] -= 273.15  # convert from K to C
+    ds_atm["QREFHT"] *= 1000  # CESM2 gives kg/kg but demandninja wants g/kg
+    ds_atm["U10"] *= (2 / 10) ** 0.14  # power law conversion from 10m to 2m
+    ds_atm["TREFHT"] -= 273.15  # convert from K to C
     return ds_atm
 
 
