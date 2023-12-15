@@ -171,7 +171,7 @@ demand_params = parameter_fill_ninja(demand_params)  # fill missing values
 pop_density = compute_country_population_density()
 var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
 
-year = 2015  # todo turn this into function parameter
+year = 1990  # todo turn this into function parameter
 ds_ninja = open_xarray_demandninja(year)
 ds_ninja.load()  # loading here once speeds up the following loop
 
