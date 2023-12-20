@@ -204,13 +204,14 @@ for country in demand_params.index:
             local_population = tmp_pop.isel(lat=ilat, lon=ilon)[var_name].values
             if np.isfinite(local_population):
                 df = pick_convert_demandninja(ds_ninja, ilat, ilon)
-                demand_list.append(demand_ninja.demand(df.copy()) * local_population)
+                demand_list.append(demand_ninja.demand(df.copy(), **params) * local_population)
     df_demand = pd.concat(demand_list)  # combine all locations
     result = df_demand.groupby(df_demand.index).sum()  # country sum
     result["country"] = country
     result_list.append(result)
 results = pd.concat(result_list)
 
+# todo add scaling to  meet JRC observed heating demand under the assumption that all heating is electrified
 results = reformat_demandninja(results)
 
 # Save # todo should this be moved to run_all?
