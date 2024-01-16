@@ -6,7 +6,7 @@ import sys
 
 
 print("open files")
-try: 
+try:
     year = str(sys.argv[1])  # can be any year between 2016 and 2034
 except IndexError:
     year = "2016"
@@ -17,6 +17,7 @@ print(year)
 ds_wind, ds_PV = open_wind_solar(
     year, test_data=False
 )  # test_data=True allows for quick test with only 10 timesteps
+ds_rho = open_rho(year, test_data=False)
 print("Files opened. Next: bias correction")
 
 ####################
@@ -43,8 +44,10 @@ print("Bias correction finished. Next: conversion to capacity factors")
 ####################
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
 ds_CF_wind = convert_winds(
-    ds_corr_wind,
-    "Wind_power_" + str(year) + ".nc",  # TODO: either remove completely or store intermediate PV output as well before computing country averages
+    density_correct_winds(ds_corr_wind, ds_rho),  # todo currently we only do it for the density corrected winds. Maybe should also do it with unmodified winds to be able to compare.
+    "Wind_power_"
+    + str(year)
+    + ".nc",  # TODO: either remove completely or store intermediate PV output as well before computing country averages
 )  # this expects that ds has variable called s_hub with hub height winds
 print("Capacity factors computed. Next: country subsets and saving data")
 
