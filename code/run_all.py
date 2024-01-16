@@ -44,7 +44,9 @@ print("Bias correction finished. Next: conversion to capacity factors")
 ####################
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
 ds_CF_wind = convert_winds(
-    density_correct_winds(ds_corr_wind, ds_rho),  # todo currently we only do it for the density corrected winds. Maybe should also do it with unmodified winds to be able to compare.
+    density_correct_winds(
+        ds_corr_wind, ds_rho
+    ),  # todo currently we only do it for the density corrected winds. Maybe should also do it with unmodified winds to be able to compare.
     "Wind_power_"
     + str(year)
     + ".nc",  # TODO: either remove completely or store intermediate PV output as well before computing country averages
