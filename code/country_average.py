@@ -63,13 +63,15 @@ def cut_out_countries(ds):
     return xr.concat(ds_list, dim="country")
 
 
-def country_means(ds, method="all"):
+def country_means(ds, method="above_median"):
     """
     Aggregate over a country
 
-    Method all takes an unweighted mean over all boxes within a country
+    Method "all" takes an unweighted mean over all boxes within a country
 
-    Todo: Add more sophisticated averaging methods
+    Method "above_median" (the default) takes an unweighted mean over all boxed in a country
+    that are better than the median on average.
+
     :param ds:
     :return:
     """
@@ -77,6 +79,11 @@ def country_means(ds, method="all"):
     ds = cut_out_countries(ds)
     if method == "all":
         ds = ds.mean(dim=["lat", "lon"], skipna=True)
+    elif method == "above_median":
+        ref = ds.median(dim=["lat", "lon", "time"], skipna=True)  # median per country
+        ds = ds.where(ds.mean(dim=["time"], skipna=True) > ref).mean(
+            dim=["lat", "lon"], skipna=True
+        )  # only average over locations that are better than the median on average
     return ds
 
 
