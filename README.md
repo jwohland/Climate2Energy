@@ -17,6 +17,12 @@ file to the 'input' folder
 
 https://github.com/wind-python/windpowerlib/blob/dev/windpowerlib/oedb/power_curves.csv
 
+### Download shapefiles of Exclusive Economic Zones for offshore wind computations
+
+The offshore assessment relies on the shapes of EEZ, in particular the World EEZ v11 (2019-11-18) shapefile provided by the Flanders Marine Institute and available at https://doi.org/10.14284/386
+
+Download and extract the data to `inputs/EEZ/`.
+
 ### Code information
 
 #### Climate model data
