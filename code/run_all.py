@@ -6,7 +6,7 @@ import sys
 
 
 print("open files")
-try: 
+try:
     year = str(sys.argv[1])  # can be any year between 2016 and 2034
 except IndexError:
     year = "2016"
@@ -44,20 +44,31 @@ print("Bias correction finished. Next: conversion to capacity factors")
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
 ds_CF_wind = convert_winds(
     ds_corr_wind,
-    "Wind_power_" + str(year) + ".nc",  # TODO: either remove completely or store intermediate PV output as well before computing country averages
+    "Wind_power_"
+    + str(year)
+    + ".nc",  # TODO: either remove completely or store intermediate PV output as well before computing country averages
 )  # this expects that ds has variable called s_hub with hub height winds
 print("Capacity factors computed. Next: country subsets and saving data")
 
 # Step 3: subset countries
 ds_CF_PV_countries = country_means(ds_CF_PV)
 ds_CF_wind_countries = country_means(ds_CF_wind)
+ds_CF_wind_countries_offshore = country_means(ds_CF_wind, onshore=False)
+
 
 # Step4: Save data
 # wind
-for i in range(3):
-    ds_tmp = ds_CF_wind_countries.isel(turbine=i)
-    turbine_name = str(ds_tmp.turbine.values)
-    store_as_pandas_dataframe(ds_tmp["CF_wind"], name=f"CF_{turbine_name}_{year}")
+for onshore in [True, False]:
+    if onshore:
+        ds_tmp_full = ds_CF_wind_countries
+    else:
+        ds_tmp_full = ds_CF_wind_countries_offshore
+    for i in range(3):
+        ds_tmp = ds_tmp_full.isel(turbine=i)
+        turbine_name = str(ds_tmp.turbine.values)
+        store_as_pandas_dataframe(
+            ds_tmp["CF_wind"], name=f"CF_{turbine_name}_{year}_onshore_{onshore}"
+        )
 # PV
 store_as_pandas_dataframe(ds_CF_PV_countries["pv"], name=f"CF_PV_{year}")
 print("Everything finished and saved")

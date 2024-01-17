@@ -106,7 +106,7 @@ def read_EEZ_shapefile():
     return shdf
 
 
-def country_means(ds, method="above_median"):
+def country_means(ds, method="above_median", onshore=True):
     """
     Aggregate over a country
 
@@ -119,7 +119,10 @@ def country_means(ds, method="above_median"):
     :return:
     """
     ds = ds.transpose(..., "lat", "lon")  # salem needs [lat, lon] as last coordinates
-    ds = cut_out_countries(ds)
+    if onshore:
+        ds = cut_out_countries(ds)
+    else:
+        ds = cut_out_countries_offshore(ds)
     if method == "all":
         ds = ds.mean(dim=["lat", "lon"], skipna=True)
     elif method == "above_median":
