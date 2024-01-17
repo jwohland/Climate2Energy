@@ -63,6 +63,49 @@ def cut_out_countries(ds):
     return xr.concat(ds_list, dim="country")
 
 
+def cut_out_countries_offshore(ds):
+    """
+    Split datasset per country via Exclusive Economic Zones.
+
+    This function is similar to
+        cut_out_countries(ds)
+    but has subtle differences in how the shapefile is treated.
+
+    :param ds:
+    :return:
+    """
+    shdf = read_EEZ_shapefile()
+    ds_list = []
+    for country in shdf.index:
+        print(country)
+        shdf_tmp = shdf.loc[country]
+        ds_country = ds.salem.roi(geometry=shdf_tmp.geometry, all_touched=True)
+        ds_country["country"] = country
+        ds_list.append(ds_country)
+    return xr.concat(ds_list, dim="country")
+
+
+def read_EEZ_shapefile():
+    """
+    Opens shapefile of Exclusive Economic Zones and prepares them for country
+    subsetting.
+    :return:
+    """
+    shdf = salem.read_shapefile("../inputs/EEZ/eez_v11.shp").set_index(
+        "TERRITORY1"
+    )  # sortby country name
+    shdf = shdf[shdf.GEONAME.str.contains("Exclusive")]
+    shdf["geometry"] = shdf.simplify(
+        tolerance=0.5, preserve_topology=True
+    )  # reduce shapefile resolution to approx half the model resolution
+    countries = get_country_list()
+    countries_EEZ = [
+        x for x in countries if x in shdf.index
+    ]  # only countries with coast
+    shdf = shdf.loc[countries_EEZ]
+    return shdf
+
+
 def country_means(ds, method="above_median"):
     """
     Aggregate over a country
