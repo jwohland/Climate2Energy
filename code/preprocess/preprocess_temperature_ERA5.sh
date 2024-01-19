@@ -1,8 +1,8 @@
 # needs to be executed as preprocess/preprocess_temperature_ERA5
-for i in {1981..2010}
+for i in {1990..2010}
     do
     # calculate daily average, remap (bilinear) to CESM grid, select Europe, change name to temperature, convert to celsius
-    cdo -b F32 -addc,-273.15 -setattribute,temperature@units="°C" -chname,t2m,temperature -sellonlatbox,-15,50,30,75 -remapbil,/net/meso/climphys/flehner/observations/era5/day/CESM_atm_grid.txt -dayavg /net/atmos/data/ERA5_deterministic/recent/0.25deg_lat-lon_1h/processed/regrid/era5_deterministic_recent.t2m.025deg.1h."${i}".nc ../output/tmp_"${i}"_temperature.nc
+    cdo -b F32 -addc,-273.15 -setattribute,temperature@units="°C" -chname,t2m,temperature -sellonlatbox,-15,50,30,75 -remapbil,/net/meso/climphys/flehner/observations/era5/day/CESM_atm_grid.txt /net/atmos/data/ERA5_deterministic/recent/0.25deg_lat-lon_1h/processed/regrid/era5_deterministic_recent.t2m.025deg.1h."${i}".nc ../output/tmp_"${i}"_temperature.nc
 
 done
 
