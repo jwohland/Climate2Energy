@@ -46,9 +46,9 @@ def open_wind_solar(year, test_data=False):
             - global horizontal radiation
             - temperature
     """
-    data_path = "/net/meso/climphys/cesm212/b.e212.BSSP370cmip6.f09_g17.001.2005.ens001/archive/atm/hist/b.e212.BSSP370cmip6.f09_g17.001.2005.ens001.cam"
+    data_path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam"
     # Wind
-    ds = xr.open_dataset(data_path + f".h3.{year}-01-01-00000.nc")
+    ds = xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc")
     ds = select_Europe(
         zero_mean_longitudes(ds).isel(lev=slice(30, 32))  # lowermost 2 levels
     )
@@ -60,10 +60,10 @@ def open_wind_solar(year, test_data=False):
     ds_wind = find_height(ds_wind)
 
     # Solar
-    ds = xr.open_dataset(data_path + f".h2.{year}-01-01-00000.nc")
+    ds = xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc")
     ds_PV = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})
     ds_t = zero_mean_longitudes(
-        xr.open_dataset(data_path + f".h1.{year}-01-01-00000.nc")
+        xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc")
     )
     ds_PV["temperature"] = ds_t["TREFHT"]
     ds_PV = ds_PV.sel(lon=slice(-15, 50), lat=slice(30, 75))
