@@ -179,43 +179,44 @@ def parameter_fill_ninja(df):
     return df
 
 
-demand_params = pd.read_csv(
-    "../inputs/demand_ninja_parameters.csv", index_col=0, skiprows=2
-)
-demand_params = parameter_fill_ninja(demand_params)  # fill missing values
-pop_density = compute_country_population_density()
-var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
+if __name__ == "__main__":
+    demand_params = pd.read_csv(
+        "../inputs/demand_ninja_parameters.csv", index_col=0, skiprows=2
+    )
+    demand_params = parameter_fill_ninja(demand_params)  # fill missing values
+    pop_density = compute_country_population_density()
+    var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
 
-for year in range(1990, 2010):
-    ds_ninja = open_xarray_demandninja(year)
-    ds_ninja.load()  # loading here once speeds up the following loop
+    for year in range(1990, 2010):
+        ds_ninja = open_xarray_demandninja(year)
+        ds_ninja.load()  # loading here once speeds up the following loop
 
-    result_list = []  # to store country level results
-    for country in demand_params.index:
-        print(country)
-        params = demand_params.loc[
-            country
-        ]  # country specific heating and cooling parameters
-        tmp_pop = pop_density.sel(country=country)
-        # computed weighted demand per country
-        demand_list = []
-        for ilat in range(ds_ninja.lat.size):
-            for ilon in range(ds_ninja.lon.size):
-                local_population = tmp_pop.isel(lat=ilat, lon=ilon)[var_name].values
-                if np.isfinite(local_population):
-                    df = pick_convert_demandninja(ds_ninja, ilat, ilon)
-                    demand_list.append(demand_ninja.demand(df.copy(), **params) * local_population)
-        df_demand = pd.concat(demand_list)  # combine all locations
-        result = df_demand.groupby(df_demand.index).sum()  # country sum
-        result["country"] = country
-        result_list.append(result)
-    results = pd.concat(result_list)
+        result_list = []  # to store country level results
+        for country in demand_params.index:
+            print(country)
+            params = demand_params.loc[
+                country
+            ]  # country specific heating and cooling parameters
+            tmp_pop = pop_density.sel(country=country)
+            # computed weighted demand per country
+            demand_list = []
+            for ilat in range(ds_ninja.lat.size):
+                for ilon in range(ds_ninja.lon.size):
+                    local_population = tmp_pop.isel(lat=ilat, lon=ilon)[var_name].values
+                    if np.isfinite(local_population):
+                        df = pick_convert_demandninja(ds_ninja, ilat, ilon)
+                        demand_list.append(demand_ninja.demand(df.copy(), **params) * local_population)
+            df_demand = pd.concat(demand_list)  # combine all locations
+            result = df_demand.groupby(df_demand.index).sum()  # country sum
+            result["country"] = country
+            result_list.append(result)
+        results = pd.concat(result_list)
 
-    # todo add scaling to  meet JRC observed heating demand under the assumption that all heating is electrified
-    results = reformat_demandninja(results)
+        # todo add scaling to  meet JRC observed heating demand under the assumption that all heating is electrified
+        results = reformat_demandninja(results)
 
-    # Save # todo should this be moved to run_all?
-    for demand_type in ["heating_demand", "cooling_demand"]:
-        results.loc[demand_type].to_csv(
-            "../output/" + demand_type + "_" + str(year) + ".csv"
-        )
+        # Save # todo should this be moved to run_all?
+        for demand_type in ["heating_demand", "cooling_demand"]:
+            results.loc[demand_type].to_csv(
+                "../output/" + demand_type + "_" + str(year) + ".csv"
+            )
