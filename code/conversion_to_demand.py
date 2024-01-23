@@ -56,9 +56,13 @@ def sense_check_demandninja_inputs(df):
     :return:
     """
     assert (df.radiation_global_horizontal >= 0).all()  # radiation must be positive
-    assert (np.absolute(df.temperature) <= 100).all()  # temps must be within -100 to 100 °C
+    assert (
+        np.absolute(df.temperature) <= 100
+    ).all()  # temps must be within -100 to 100 °C
     assert (df.wind_speed_2m >= 0).all()  # wind must be positive
-    assert (df.wind_speed_2m <= 100).all()  # winds cannot be unrealistically high (100 m/s)
+    assert (
+        df.wind_speed_2m <= 100
+    ).all()  # winds cannot be unrealistically high (100 m/s)
     assert (df.humidity >= 0).all()  # humidity cannot be negative
 
 
@@ -179,7 +183,135 @@ def parameter_fill_ninja(df):
     return df
 
 
-if __name__ == "__main__":
+def country_mapping_JRC_CESM2Energy():
+    """
+    Country names are different in JRC and CESM2Energy. This dictionary does the translation.
+
+    No data means that the country exists in CESM2Energy but not in the JRC database.
+    :return:
+    """
+    country_mapping = {
+        "Albania": "no_data",
+        "Austria": "AT",
+        "Belgium": "BE",
+        "Bosnia and Herzegovina": "no_data",
+        "Bulgaria": "BG",
+        "Croatia": "HR",
+        "Czech Republic": "CZ",
+        "Denmark": "DK",
+        "Estonia": "EE",
+        "Finland": "FI",
+        "France": "FR",
+        "Germany": "DE",
+        "Greece": "EL",
+        "Hungary": "HU",
+        "Ireland": "IE",
+        "Italy": "IT",
+        "Latvia": "LV",
+        "Lithuania": "LT",
+        "Macedonia": "no_data",
+        "Montenegro": "no_data",
+        "Netherlands": "NL",
+        "Norway": "no_data",
+        "Poland": "PL",
+        "Portugal": "PT",
+        "Romania": "RO",
+        "Serbia": "no_data",
+        "Slovakia": "SK",
+        "Slovenia": "SI",
+        "Spain": "ES",
+        "Sweden": "SE",
+        "Switzerland": "no_data",
+        "United Kingdom": "UK",
+    }
+    return country_mapping
+
+
+def compute_electrified_share(country, metric="fec"):
+    """
+    Compute the electrified share of heating demand according to the JRC database.
+
+    Shares have values between 0 and 1, i.e., no to full electrification of heating.
+    Values are computed for the Residential and Tertiary sector. Final energy consumption
+    is evaluated per default.
+    """
+    if country != "no_data":
+        df = pd.read_excel(
+            "../inputs/JRC/JRC-IDEES-2015_Residential_" + country + ".xlsx",
+            sheet_name="RES_hh_" + metric,
+            index_col=0,
+        )
+        demand_res_ktoe = (
+            df.loc["Advanced electric heating"][2015]
+            + df.loc["Conventional electric heating"][2015]
+        )
+        demand_res_total_ktoe = df.loc["Space heating"][2015]
+        df = pd.read_excel(
+            "../inputs/JRC/JRC-IDEES-2015_Tertiary_" + country + ".xlsx",
+            sheet_name="SER_hh_" + metric,
+            index_col=0,
+        )
+        demand_ser_ktoe = (
+            df.loc["Advanced electric heating"][2015]
+            + df.loc["Conventional electric heating"][2015]
+        )
+        demand_ser_total_ktoe = df.loc["Space heating"][2015]
+
+        electrified_share = (demand_res_ktoe + demand_ser_ktoe) / (
+            demand_res_total_ktoe + demand_ser_total_ktoe
+        )
+
+        return electrified_share
+
+
+def compute_share_df():
+    """
+    Loop over the countries and compute the electrified heating share.
+
+    For 7 countries that are included in CESM2Energy, there is no entry in JRC.
+    We fill those with the data from similar countries, see below for the exact mapping.
+    :return:
+    """
+    country_mapping = country_mapping_JRC_CESM2Energy()
+    share_dict = {
+        country: compute_electrified_share(country_mapping[country])
+        for country in country_mapping.keys()
+    }
+    df = pd.Series(share_dict, name="electrified_heating_share").to_frame()
+    # Make assumptions to fill the holes
+    df.loc["Albania"] = df.loc["Romania"]
+    df.loc["Bosnia and Herzegovina"] = df.loc["Slovakia"]
+    df.loc["Macedonia"] = df.loc["Slovenia"]
+    df.loc["Montenegro"] = df.loc["Slovakia"]
+    df.loc["Serbia"] = df.loc["Bulgaria"]
+    df.loc["Norway"] = df.loc["Sweden"]
+    df.loc["Switzerland"] = df.loc["Austria"]
+    return df
+
+
+def scale_heating_demand(target_share, df_current_share, df_demand):
+    """
+    Scale heating demand from its current share to a target share.
+
+    Shares is given in the range from 0 to 1 where 0 means that no heating is
+    supplied via electricity and 1 means that all of it is electrified.
+    """
+    for country in df_demand.index:
+        df_demand.loc[country] *= (
+            target_share / df_current_share.loc[country]["electrified_heating_share"]
+        )
+    return df_demand
+
+
+def demand_conversion(target_share=None):
+    """
+    Execute conversion from CESM2 output to heating and cooling demand over all historical years
+
+    1990 - 2010
+
+    :param target_share: Electrified heating share. Either None or value between 0 and 1 (fully electrified)
+    :return:
+    """
     demand_params = pd.read_csv(
         "../inputs/demand_ninja_parameters.csv", index_col=0, skiprows=2
     )
@@ -190,7 +322,6 @@ if __name__ == "__main__":
     for year in range(1990, 2010):
         ds_ninja = open_xarray_demandninja(year)
         ds_ninja.load()  # loading here once speeds up the following loop
-
         result_list = []  # to store country level results
         for country in demand_params.index:
             print(country)
@@ -205,18 +336,25 @@ if __name__ == "__main__":
                     local_population = tmp_pop.isel(lat=ilat, lon=ilon)[var_name].values
                     if np.isfinite(local_population):
                         df = pick_convert_demandninja(ds_ninja, ilat, ilon)
-                        demand_list.append(demand_ninja.demand(df.copy(), **params) * local_population)
+                        demand_list.append(
+                            demand_ninja.demand(df.copy(), **params) * local_population
+                        )
             df_demand = pd.concat(demand_list)  # combine all locations
             result = df_demand.groupby(df_demand.index).sum()  # country sum
             result["country"] = country
             result_list.append(result)
-        results = pd.concat(result_list)
+        results = reformat_demandninja(pd.concat(result_list))
 
-        # todo add scaling to  meet JRC observed heating demand under the assumption that all heating is electrified
-        results = reformat_demandninja(results)
+        if target_share:  # scale to target share
+            results.loc["heating"] = scale_heating_demand(
+                target_share, compute_share_df(), results.loc["heating"]
+            )
 
         # Save # todo should this be moved to run_all?
         for demand_type in ["heating_demand", "cooling_demand"]:
+            filesuffix = demand_type + "_" + str(year)
+            if target_share:
+                filesuffix += "_" + str(int(target_share * 100))
             results.loc[demand_type].to_csv(
-                "../output/" + demand_type + "_" + str(year) + ".csv"
+                "../output/" + filesuffix + ".csv"
             )
