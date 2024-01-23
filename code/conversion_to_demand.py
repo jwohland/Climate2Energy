@@ -349,17 +349,20 @@ def demand_conversion():
             result_list.append(result)
         results = reformat_demandninja(pd.concat(result_list))
 
-        # Save # todo should this be moved to run_all?
-        for target_share in [None, 1]:
-            for demand_type in ["heating_demand", "cooling_demand"]:
-                file_suffix = demand_type + "_" + str(year)
-                if (target_share is not None) & (demand_type == "heating_demand"):
-                    file_suffix += "_fully_electrified"
-                    # scale to target share
-                    results.loc[demand_type] = scale_heating_demand(
-                        target_share, compute_share_df(), results.loc[demand_type]
-                    )
-                results.loc[demand_type].to_csv("../output/" + file_suffix + ".csv")
+        # todo should this be moved to run_all?
+        # Save raw
+        for demand_type in ["heating_demand", "cooling_demand"]:
+            file_suffix = demand_type + "_" + str(year)
+            results.loc[demand_type].to_csv("../output/" + file_suffix + ".csv")
+
+        # Save scaled heating
+        demand_type = "heating_demand"
+        file_suffix = demand_type + "_" + str(year) + "_fully_electrified"
+        # scale to target share
+        df_heating_scaled = scale_heating_demand(
+            1, compute_share_df(), results.loc[demand_type].copy()
+        )
+        df_heating_scaled.to_csv("../output/" + file_suffix + ".csv")
 
 
 if __name__ == "__main__":
