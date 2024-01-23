@@ -352,14 +352,14 @@ def demand_conversion():
         # Save # todo should this be moved to run_all?
         for target_share in [None, 1]:
             for demand_type in ["heating_demand", "cooling_demand"]:
-                filesuffix = demand_type + "_" + str(year)
+                file_suffix = demand_type + "_" + str(year)
                 if (target_share is not None) & (demand_type == "heating_demand"):
-                    filesuffix += "_fully_electrified"
+                    file_suffix += "_fully_electrified"
                     # scale to target share
-                    results.loc["heating"] = scale_heating_demand(
-                        target_share, compute_share_df(), results.loc["heating"]
+                    results.loc[demand_type] = scale_heating_demand(
+                        target_share, compute_share_df(), results.loc[demand_type]
                     )
-                results.loc[demand_type].to_csv("../output/" + filesuffix + ".csv")
+                results.loc[demand_type].to_csv("../output/" + file_suffix + ".csv")
 
 
 if __name__ == "__main__":
