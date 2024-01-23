@@ -360,3 +360,7 @@ def demand_conversion():
                         target_share, compute_share_df(), results.loc["heating"]
                     )
                 results.loc[demand_type].to_csv("../output/" + filesuffix + ".csv")
+
+
+if __name__ == "__main__":
+    demand_conversion()
