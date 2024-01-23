@@ -23,6 +23,14 @@ After registration, data can be retrieved from the link below. We choose the hig
 
 https://sedac.ciesin.columbia.edu/data/set/gpw-v4-population-density-adjusted-to-2015-unwpp-country-totals-rev11/data-download
 
+### Download JRC-IDEES-2015_v1 data
+
+We provide electrified heating demand using the currently electrified share (using demand-ninja and CESM2 climate information) as well as a scaled version. The scaled version assumes that all heating is fully electrified and can be used to create scenarios (e.g., division by 5 corresponds to a scenario where 20% of heating is met by electricity). The scaling needs input data from the Joint Research Center (JRC) Integrated Database of the European Energy System (IDEES) which must be downloaded by running 
+
+`bash download_JRC.sh`
+
+from the `code` folder, which downloads and unzipped the required inputs.
+
 ### Code information
 
 #### Climate model data
