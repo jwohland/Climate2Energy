@@ -303,13 +303,17 @@ def scale_heating_demand(target_share, df_current_share, df_demand):
     return df_demand
 
 
-def demand_conversion(target_share=None):
+def demand_conversion():
     """
-    Execute conversion from CESM2 output to heating and cooling demand over all historical years
+    Execute conversion from CESM2 output to heating and cooling demand over all historical years (1990 - 2010).
 
-    1990 - 2010
+    This outputs two version of heating demand.
 
-    :param target_share: Electrified heating share. Either None or value between 0 and 1 (fully electrified)
+    The first, ending in "_fully_electrified.csv", assumes that heating demand is fully met with electricity
+    using the current mix of electrical heating technologies in every country.
+
+    The other output is not scaled and represents the demandninja raw output when driven with CESM2.
+
     :return:
     """
     demand_params = pd.read_csv(
@@ -345,16 +349,14 @@ def demand_conversion(target_share=None):
             result_list.append(result)
         results = reformat_demandninja(pd.concat(result_list))
 
-        if target_share:  # scale to target share
-            results.loc["heating"] = scale_heating_demand(
-                target_share, compute_share_df(), results.loc["heating"]
-            )
-
         # Save # todo should this be moved to run_all?
-        for demand_type in ["heating_demand", "cooling_demand"]:
-            filesuffix = demand_type + "_" + str(year)
-            if target_share:
-                filesuffix += "_" + str(int(target_share * 100)) + "_percent"
-            results.loc[demand_type].to_csv(
-                "../output/" + filesuffix + ".csv"
-            )
+        for target_share in [None, 1]:
+            for demand_type in ["heating_demand", "cooling_demand"]:
+                filesuffix = demand_type + "_" + str(year)
+                if (target_share is not None) & (demand_type == "heating_demand"):
+                    filesuffix += "_fully_electrified"
+                    # scale to target share
+                    results.loc["heating"] = scale_heating_demand(
+                        target_share, compute_share_df(), results.loc["heating"]
+                    )
+                results.loc[demand_type].to_csv("../output/" + filesuffix + ".csv")
