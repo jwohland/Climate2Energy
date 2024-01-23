@@ -354,7 +354,7 @@ def demand_conversion(target_share=None):
         for demand_type in ["heating_demand", "cooling_demand"]:
             filesuffix = demand_type + "_" + str(year)
             if target_share:
-                filesuffix += "_" + str(int(target_share * 100))
+                filesuffix += "_" + str(int(target_share * 100)) + "_percent"
             results.loc[demand_type].to_csv(
                 "../output/" + filesuffix + ".csv"
             )
