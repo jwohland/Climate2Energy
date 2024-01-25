@@ -2,18 +2,21 @@
 
 for i in {1990..2010}
     do
-    #monthly to yearly file, change name to U
-    cdo -mergetime -chname,100u,U /net/atmos/data/era5_cds/original/100u/1hr/"${i}"/100u_1hr_era5_"${i}"*.nc ../output/u_"${i}".nc
-    #monthly to yearly file, change name to V
-    cdo -mergetime -chname,100v,V /net/atmos/data/era5_cds/original/100v/1hr/"${i}"/100v_1hr_era5_"${i}"*.nc ../output/v_"${i}".nc
-    # add U an V to same file
-    cdo merge ../output/u_${i}.nc ../output/v_${i}.nc ../output/tmp_"${i}"_s_hub_uv.nc
-    # calculate s = sqrt(u^2 + v^2), select only s, remap (conservative), calculate 6-hourly mean, select Europe TODO: insta values
-    cdo -sellonlatbox,-15,50,30,75 -remapcon,/net/meso/climphys/flehner/observations/era5/day/CESM_atm_grid.txt -selname,s_hub -expr,"s_hub=sqrt(U*U+V*V);" ../output/tmp_"${i}"_s_hub_uv.nc ../output/tmp_"${i}"_s_hub.nc
-    
-    rm ../output/u_"${i}".nc
-    rm ../output/v_"${i}".nc
-    rm ../output/tmp_"${i}"_s_hub_uv.nc
+    for j in 01 02 03 04 05 06 07 08 09 10 11 12
+        do
+        #monthly to yearly file, change name to U
+        cdo mergetime -chname,100u,U /net/atmos/data/era5_cds/original/100u/1hr/"${i}"/100u_1hr_era5_"${i}""${j}".nc ../output/u_"${i}""${j}".nc
+        #monthly to yearly file, change name to V
+        cdo mergetime -chname,100v,V /net/atmos/data/era5_cds/original/100v/1hr/"${i}"/100v_1hr_era5_"${i}""${j}".nc ../output/v_"${i}""${j}".nc
+        # add U an V to same file
+        cdo merge ../output/u_"${i}""${j}".nc ../output/v_"${i}""${j}".nc ../output/tmp_"${i}""${j}"_s_hub_uv.nc
+        # calculate s = sqrt(u^2 + v^2), select only s, remap (conservative), calculate 6-hourly mean, select Europe TODO: insta values
+        cdo sellonlatbox,-15,50,30,75 -remapcon,/net/meso/climphys/flehner/observations/era5/day/CESM_atm_grid.txt -selname,s_hub -expr,"s_hub=sqrt(U*U+V*V);" ../output/tmp_"${i}""${j}"_s_hub_uv.nc ../output/tmp_"${i}""${j}"_s_hub.nc
+        
+        rm ../output/u_"${i}""${j}".nc
+        rm ../output/v_"${i}""${j}".nc
+        rm ../output/tmp_"${i}""${j}"_s_hub_uv.nc
+        done
 
 done
 # merge all years
