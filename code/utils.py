@@ -66,7 +66,8 @@ def open_wind_solar(year, test_data=False):
         xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc")
     )
     ds_PV["temperature"] = ds_t["TREFHT"]
-    ds_PV = ds_PV.sel(lon=slice(-15, 50), lat=slice(30, 75))
+    ds_PV = temp_cel(ds_PV) # temperature in celsius
+    ds_PV = select_Europe(ds_PV)
     with warnings.catch_warnings():  # to_datetimeindex throws a warning because CESM uses non-leap year calendar. We verified that this is not a problem (see notebook 13) and catch the warning here.
         warnings.simplefilter("ignore")
         ds_PV["time"] = ds_PV.indexes[
