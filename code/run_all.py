@@ -9,7 +9,7 @@ print("open files")
 try: 
     year = str(sys.argv[1])  # can be any year between 2016 and 2034
 except IndexError:
-    year = "2016"
+    year = "2010"
 print(year)
 ####################
 # Step 0: Open data
