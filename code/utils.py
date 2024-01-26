@@ -61,11 +61,10 @@ def open_wind_solar(year, test_data=False):
 
     # Solar
     ds = xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc")
-    ds_PV = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})["global_horizontal"]
-    ds_t = zero_mean_longitudes(
-        xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc")
-    )
-    ds_PV["temperature"] = ds_t["TREFHT"]
+    rad = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})["global_horizontal"]
+    t = zero_mean_longitudes(xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc"))["TREFHT"]
+    ds_PV = rad.to_dataset()
+    ds_PV["temperature"] = t
     ds_PV = temp_cel(ds_PV) # temperature in celsius
     ds_PV = select_Europe(ds_PV)
     with warnings.catch_warnings():  # to_datetimeindex throws a warning because CESM uses non-leap year calendar. We verified that this is not a problem (see notebook 13) and catch the warning here.
