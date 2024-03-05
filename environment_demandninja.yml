@@ -1,0 +1,26 @@
+name: demand_ninja_test
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - xarray
+  - pandas
+  - ipykernel
+  - ca-certificates
+  - openssl
+  - netcdf4
+  - scipy
+  - matplotlib
+  - certifi
+  - seaborn
+  - salem
+  - shapely
+  - geopandas
+  - rasterio
+  - dask
+  - openpyxl
+
+  - pip
+  - pip:
+    - git+https://github.com/renewables-ninja/demand-ninja.git@248c32cbea2bd78b43adfd957520dde9badc5866
