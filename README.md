@@ -55,5 +55,9 @@ For implementing hydropower, we would additionally need run-off or precipitation
 
 We are currently using daily mean values for RSDS and TREFHT, while wind speed is in 6-hourly format.
 
+#### Climate model grid
+Information of the grid used by the climate model needs to be provided for the bias correction. 
+The code reads grid information from `inputs/CESM_atm_grid.txt`.
+
 #### Bias correction (NEEDS UPDATING)
 Currently, the "ground truth" values used for bias correction comes from ERA5 data, regridded to CESM2 resolution (spatial + temporal). 
