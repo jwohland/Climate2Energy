@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 import warnings
+from os import makedirs
 
 
 def select_Europe(ds):
@@ -61,11 +62,15 @@ def open_wind_solar(year, test_data=False):
 
     # Solar
     ds = xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc")
-    rad = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})["global_horizontal"]
-    t = zero_mean_longitudes(xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc"))["TREFHT"]
+    rad = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})[
+        "global_horizontal"
+    ]
+    t = zero_mean_longitudes(xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc"))[
+        "TREFHT"
+    ]
     ds_PV = rad.to_dataset()
     ds_PV["temperature"] = t
-    ds_PV = temp_cel(ds_PV) # temperature in celsius
+    ds_PV = temp_cel(ds_PV)  # temperature in celsius
     ds_PV = select_Europe(ds_PV)
     with warnings.catch_warnings():  # to_datetimeindex throws a warning because CESM uses non-leap year calendar. We verified that this is not a problem (see notebook 13) and catch the warning here.
         warnings.simplefilter("ignore")
@@ -161,3 +166,20 @@ def extrapolate_wind_xr(da, input_height, output_height, alpha):
     :return:
     """
     return da * (output_height / input_height) ** alpha
+
+
+def create_directories():
+    """
+    Creates the directories that are needed to store the output in the desired structure
+    :return:
+    """
+
+    required_directories = [
+        "../output/PV",  # PV output
+        "../output/E-126_7580",  # Wind turbine 1
+        "../output/SWT120_3600",  # Wind turbine 2
+        "../output/SWT142_3150",  # Wind turbine 3
+        "../plots/",  # plots
+    ]
+    for directory in required_directories:
+        makedirs(directory, exist_ok=True)  # only create them if they do not exist yet

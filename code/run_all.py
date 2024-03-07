@@ -4,6 +4,9 @@ from country_average import *
 from utils import *
 import sys
 
+####################
+# Prep
+####################
 
 print("open files")
 try: 
@@ -11,6 +14,10 @@ try:
 except IndexError:
     year = "2010"
 print(year)
+
+# Create directory structure
+create_directories()
+
 ####################
 # Step 0: Open data
 ####################
