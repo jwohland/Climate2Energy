@@ -31,6 +31,22 @@ def find_height(ds):
     return ds
 
 
+def get_hub_heights(turbine_name):
+    """
+    Lookup function to check turbine hub heights.
+    Information is taken from windpowerlib, see link below.
+
+    https://github.com/wind-python/windpowerlib/blob/dev/windpowerlib/data/default_turbine_data/turbine_data.csv
+    :return:
+    """
+    hub_height_dict = {
+        "SWT142_3150": 129,  # this turbine has 3 possible hub heights. We choose the one in the middle.
+        "SWT120_3600": 90,
+        "E-126_7580": 127,
+    }
+    return hub_height_dict[turbine_name]
+
+
 def open_wind_solar(year, test_data=False):
     """
     Open the data needed for wind and solar energy calculation and output

@@ -33,9 +33,6 @@ ds_interpolated, alpha = interpolate_wind_xr(
     ds_wind, 100
 )  # careful: this outputs s_hub even though these are 100m winds
 ds_corr_wind = bias_correct_dataset(ds_interpolated, "s_hub")
-ds_corr_wind = extrapolate_wind_xr(ds_corr_wind, 100, 120, alpha).to_dataset(
-    name="s_hub"
-)
 print("Bias correction finished. Next: conversion to capacity factors")
 
 ####################
@@ -44,6 +41,7 @@ print("Bias correction finished. Next: conversion to capacity factors")
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
 ds_CF_wind = convert_winds(
     ds_corr_wind,
+    alpha,
     "Wind_power_"
     + str(year)
     + ".nc",  # TODO: either remove completely or store intermediate PV output as well before computing country averages
