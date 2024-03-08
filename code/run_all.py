@@ -4,13 +4,20 @@ from country_average import *
 from utils import *
 import sys
 
+####################
+# Prep
+####################
 
 print("open files")
 try: 
-    year = str(sys.argv[1])  # can be any year between 2016 and 2034
+    year = str(sys.argv[1])  # can be any year between 1990 and 2010
 except IndexError:
-    year = "2016"
+    year = "2010"
 print(year)
+
+# Create directory structure
+create_directories()
+
 ####################
 # Step 0: Open data
 ####################
@@ -42,9 +49,10 @@ print("Bias correction finished. Next: conversion to capacity factors")
 # Step 2: Calculate capacity factors
 ####################
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
+ds_CF_PV.to_netcdf(f"../output/PV/PV_{year}.nc")
 ds_CF_wind = convert_winds(
     ds_corr_wind,
-    "Wind_power_" + str(year) + ".nc",  # TODO: either remove completely or store intermediate PV output as well before computing country averages
+    f"Wind_power_{str(year)}.nc",  
 )  # this expects that ds has variable called s_hub with hub height winds
 print("Capacity factors computed. Next: country subsets and saving data")
 
