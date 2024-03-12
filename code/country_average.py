@@ -106,14 +106,14 @@ def read_EEZ_shapefile():
     return shdf
 
 
-def country_means(ds, method="above_median", onshore=True):
+def country_means(ds, method="median_and_better", onshore=True):
     """
     Aggregate over a country
 
     Method "all" takes an unweighted mean over all boxes within a country
 
-    Method "above_median" (the default) takes an unweighted mean over all boxed in a country
-    that are better than the median on average.
+    Method "median_and_better" (the default) takes an unweighted mean over all boxes in a country
+    with average capacity factors that are at least as high as the median over the country.
 
     :param ds:
     :return:
@@ -125,9 +125,11 @@ def country_means(ds, method="above_median", onshore=True):
         ds = cut_out_countries_offshore(ds)
     if method == "all":
         ds = ds.mean(dim=["lat", "lon"], skipna=True)
-    elif method == "above_median":
-        ref = ds.median(dim=["lat", "lon", "time"], skipna=True)  # median per country
-        ds = ds.where(ds.mean(dim=["time"], skipna=True) > ref).mean(
+    elif method == "median_and_better":
+        ref = ds.mean(dim="time", skipna=True).median(
+            dim=["lat", "lon"], skipna=True
+        )  # median per country
+        ds = ds.where(ds.mean(dim=["time"], skipna=True) >= ref).mean(
             dim=["lat", "lon"], skipna=True
         )  # only average over locations that are better than the median on average
     return ds
