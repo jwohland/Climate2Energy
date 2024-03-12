@@ -28,7 +28,7 @@ for var in ["temperature", "global_horizontal"]:
     ds_corr_PV[var] = bias_correct_dataset(ds_PV, var)
 
 print("s_hub")
-# Extrapolate model to 100m (i.e., ERA5 height), then bias correct, then extrapolate to 120m
+# Extrapolate model to 100m (i.e., ERA5 height), then bias correct
 ds_interpolated, alpha = interpolate_wind_xr(
     ds_wind, 100
 )  # careful: this outputs s_hub even though these are 100m winds
