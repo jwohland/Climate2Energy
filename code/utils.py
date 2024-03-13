@@ -277,7 +277,7 @@ def compute_density_target(
     return ds
 
 
-def density_correct_winds(ds_wind, ds_rho):
+def density_correct_winds(ds_wind, ds_rho, target_height):
     """
     Perform a wind correction that captures the effects of differing air density.
     Turbine power curves are reported at standard air density (rho_std) but
@@ -309,6 +309,8 @@ def density_correct_winds(ds_wind, ds_rho):
     :return:
     """
     rho_std = 1.225  # kg/m3 according to IEC 61400-12
-    ds_tmp = ds_wind["s_hub"] * (ds_rho["RHO_target"] / rho_std) ** (1 / 3)
+    ds_tmp = ds_wind["s_hub"] * (
+        compute_density_target(ds_rho.copy(), target_height)["RHO_target"] / rho_std
+    ) ** (1 / 3)
     ds_tmp.to_dataset(name="s_hub")
     return ds_tmp
