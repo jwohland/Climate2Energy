@@ -159,7 +159,7 @@ def calculate_PV(ds, params=None, num_cores=1):
     ds_pv = run_interface_from_dataset(
         data=ds,
         params=params,
-        frequency="D",
+        frequency="H",
         pdfs_file=None,
         num_cores=num_cores,
     )

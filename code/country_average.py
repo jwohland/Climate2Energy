@@ -55,7 +55,6 @@ def cut_out_countries(ds):
     shdf = salem.read_shapefile(salem.get_demo_file("world_borders.shp"))
     ds_list = []
     for country in get_country_list():
-        print(country)
         shdf_tmp = shdf.loc[shdf["CNTRY_NAME"] == country]
         ds_country = ds.salem.roi(shape=shdf_tmp, all_touched=True)
         ds_country["country"] = country
