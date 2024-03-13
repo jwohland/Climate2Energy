@@ -130,7 +130,7 @@ def country_means(ds, method="median_and_better", onshore=True):
         )  # median per country
         ds = ds.where(ds.mean(dim=["time"], skipna=True) >= ref).mean(
             dim=["lat", "lon"], skipna=True
-        )  # only average over locations that are better than the median on average
+        )  # only average overlocations that at least as good as the median on average
     return ds
 
 
