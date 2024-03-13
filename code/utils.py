@@ -4,6 +4,9 @@ import warnings
 from os import makedirs
 
 
+DATA_PATH = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/"
+
+
 def select_Europe(ds):
     return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
 
@@ -63,9 +66,10 @@ def open_wind_solar(year, test_data=False):
             - global horizontal radiation
             - temperature
     """
-    data_path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam"
     # Wind
-    ds = xr.open_dataset(f"{data_path}.h6.{year}-01-01-03600.nc")
+    ds = xr.open_dataset(
+        f"{DATA_PATH}atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam.h6.{year}-01-01-03600.nc"
+    )
     ds = select_Europe(
         zero_mean_longitudes(ds).isel(lev=slice(30, 32))  # lowermost 2 levels
     )
@@ -108,16 +112,11 @@ def open_rho(year, test_data=False):
     :param test_data:
     :return:
     """
-    data_path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/"
     chunks = {"lat": 10, "lon": 10, "lev": 5, "ilev": 5, "time": 1000}
     ds_atm = xr.open_dataset(
-        data_path
-        + "atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam.h6."
-        + year
-        + "-01-01-03600.nc",
+        f"{DATA_PATH}atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam.h6.{year}-01-01-03600.nc",
         chunks=chunks,
-    )  # todo change filepath for hourly inputs
-
+    )
     ds_rho = select_Europe(
         zero_mean_longitudes(
             ds_atm.sel(ilev=slice(900, 1200), lev=slice(900, 1200))[["RHO_CLUBB", "Z3"]]
@@ -254,7 +253,9 @@ def add_target_pressure_level(ds, target_height):
     return ds
 
 
-def compute_density_target(ds, target_height=120):  # todo target height needs to be aligned with multiple hub heights
+def compute_density_target(
+    ds, target_height=120
+):  # todo target height needs to be aligned with multiple hub heights
     """
     Interpolation of atmospheric density which is reported
     between model levels to the pressure level that corresponds
