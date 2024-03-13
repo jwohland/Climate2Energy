@@ -55,7 +55,6 @@ def cut_out_countries(ds):
     shdf = salem.read_shapefile(salem.get_demo_file("world_borders.shp"))
     ds_list = []
     for country in get_country_list():
-        print(country)
         shdf_tmp = shdf.loc[shdf["CNTRY_NAME"] == country]
         ds_country = ds.salem.roi(shape=shdf_tmp, all_touched=True)
         ds_country["country"] = country
@@ -63,20 +62,75 @@ def cut_out_countries(ds):
     return xr.concat(ds_list, dim="country")
 
 
-def country_means(ds, method="all"):
+def cut_out_countries_offshore(ds):
+    """
+    Split datasset per country via Exclusive Economic Zones.
+
+    This function is similar to
+        cut_out_countries(ds)
+    but has subtle differences in how the shapefile is treated.
+
+    :param ds:
+    :return:
+    """
+    shdf = read_EEZ_shapefile()
+    ds_list = []
+    for country in shdf.index:
+        print(country)
+        shdf_tmp = shdf.loc[country]
+        ds_country = ds.salem.roi(geometry=shdf_tmp.geometry, all_touched=True)
+        ds_country["country"] = country
+        ds_list.append(ds_country)
+    return xr.concat(ds_list, dim="country")
+
+
+def read_EEZ_shapefile():
+    """
+    Opens shapefile of Exclusive Economic Zones and prepares them for country
+    subsetting.
+    :return:
+    """
+    shdf = salem.read_shapefile("../inputs/EEZ/eez_v11.shp").set_index(
+        "TERRITORY1"
+    )  # sortby country name
+    shdf = shdf[shdf.GEONAME.str.contains("Exclusive")]
+    shdf["geometry"] = shdf.simplify(
+        tolerance=0.5, preserve_topology=True
+    )  # reduce shapefile resolution to approx half the model resolution
+    countries = get_country_list()
+    countries_EEZ = [
+        x for x in countries if x in shdf.index
+    ]  # only countries with coast
+    shdf = shdf.loc[countries_EEZ]
+    return shdf
+
+
+def country_means(ds, method="median_and_better", onshore=True):
     """
     Aggregate over a country
 
-    Method all takes an unweighted mean over all boxes within a country
+    Method "all" takes an unweighted mean over all boxes within a country
 
-    Todo: Add more sophisticated averaging methods
+    Method "median_and_better" (the default) takes an unweighted mean over all boxes in a country
+    with average capacity factors that are at least as high as the median over the country.
+
     :param ds:
     :return:
     """
     ds = ds.transpose(..., "lat", "lon")  # salem needs [lat, lon] as last coordinates
-    ds = cut_out_countries(ds)
+    if onshore:
+        ds = cut_out_countries(ds)
+    else:
+        ds = cut_out_countries_offshore(ds)
     if method == "all":
         ds = ds.mean(dim=["lat", "lon"], skipna=True)
+    elif method == "median_and_better":
+        ref = ds.mean(dim="time", skipna=True).median(
+            dim=["lat", "lon"], skipna=True
+        )  # median per country
+        ds = ds.where(ds.mean(dim=["time"], skipna=True) >= ref).mean(
+            dim=["lat", "lon"], skipna=True
+        )  # only average overlocations that at least as good as the median on average
     return ds
 
 
