@@ -312,5 +312,5 @@ def density_correct_winds(ds_wind, ds_rho, target_height):
     ds_tmp = ds_wind["s_hub"] * (
         compute_density_target(ds_rho.copy(), target_height)["RHO_target"] / rho_std
     ) ** (1 / 3)
-    ds_tmp.to_dataset(name="s_hub")
+    ds_tmp = ds_tmp.to_dataset(name="s_hub")
     return ds_tmp
