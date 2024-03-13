@@ -81,6 +81,12 @@ def open_wind_solar(year, test_data=False):
 
 
 def open_rho(year, test_data=False):
+    """
+    Open air density and geopotential height
+    :param year:
+    :param test_data:
+    :return:
+    """
     data_path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/"
     chunks = {"lat": 10, "lon": 10, "lev": 5, "ilev": 5, "time": 1000}
     ds_atm = xr.open_dataset(
@@ -89,11 +95,15 @@ def open_rho(year, test_data=False):
         + year
         + "-01-01-03600.nc",
         chunks=chunks,
-    )
+    )  # todo change filepath for hourly inputs
 
-    ds_rho = ds_atm.sel(ilev=slice(900, 1200), lev=slice(900, 1200))[
-        ["RHO_CLUBB", "Z3"]
-    ]
+    ds_rho = select_Europe(
+        zero_mean_longitudes(
+            ds_atm.sel(ilev=slice(900, 1200), lev=slice(900, 1200))[["RHO_CLUBB", "Z3"]]
+            # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev
+            # we here select slices that contain hub height pressure on the GCM grid
+        )
+    )
     # Keep only few timesteps for test data
     if test_data:
         ds_rho = ds_rho.isel(time=slice(0, 10))
@@ -206,7 +216,7 @@ def add_target_pressure_level(ds, target_height):
     return ds
 
 
-def compute_density_target(ds, target_height=120):
+def compute_density_target(ds, target_height=120):  # todo target height needs to be aligned with multiple hub heights
     """
     Interpolation of atmospheric density which is reported
     between model levels to the pressure level that corresponds
@@ -222,6 +232,7 @@ def compute_density_target(ds, target_height=120):
     :return:
     """
     ds = add_target_pressure_level(ds, target_height=target_height)
+    # interpolate ilev and lev (shifted by half a grid cell) to pressure at target height
     ds = ds.interp(lev=ds["p_target"], ilev=ds["p_target"])
     ds = ds.drop(["Z3", "height", "p_target"]).rename({"RHO_CLUBB": "RHO_target"})
     ds = ds.drop(["lev", "ilev"])
