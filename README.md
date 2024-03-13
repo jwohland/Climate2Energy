@@ -26,6 +26,12 @@ The conversion to wind capacity factors is based on the power curves from the wi
 
 https://github.com/wind-python/windpowerlib/blob/dev/windpowerlib/oedb/power_curves.csv
 
+### Download shapefiles of Exclusive Economic Zones for offshore wind computations
+
+The offshore assessment relies on the shapes of EEZ, in particular the World EEZ v11 (2019-11-18) shapefile provided by the Flanders Marine Institute and available at https://www.marineregions.org/download_file.php?name=World_EEZ_v11_20191118.zip
+
+Download and extract the data to `inputs/EEZ/`.
+
 ### Download population data from NASA/Columbia Uni
 
 After registration, data can be retrieved from the link below. We choose the highest resolution (2.5 minutes). Data must be unzipped and the file `gpw_v4_population_density_adjusted_rev11_2pt5_min.nc` must be moved into the `inputs` folder. 

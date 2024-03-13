@@ -9,6 +9,7 @@ import sys
 ####################
 
 print("open files")
+
 try: 
     year = str(sys.argv[1])  # can be any year between 1990 and 2010
 except IndexError:
@@ -35,14 +36,11 @@ for var in ["temperature", "global_horizontal"]:
     ds_corr_PV[var] = bias_correct_dataset(ds_PV, var)
 
 print("s_hub")
-# Extrapolate model to 100m (i.e., ERA5 height), then bias correct, then extrapolate to 120m
+# Extrapolate model to 100m (i.e., ERA5 height), then bias correct
 ds_interpolated, alpha = interpolate_wind_xr(
     ds_wind, 100
 )  # careful: this outputs s_hub even though these are 100m winds
 ds_corr_wind = bias_correct_dataset(ds_interpolated, "s_hub")
-ds_corr_wind = extrapolate_wind_xr(ds_corr_wind, 100, 120, alpha).to_dataset(
-    name="s_hub"
-)
 print("Bias correction finished. Next: conversion to capacity factors")
 
 ####################
@@ -52,6 +50,7 @@ ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
 ds_CF_PV.to_netcdf(f"../output/PV/PV_{year}.nc")
 ds_CF_wind = convert_winds(
     ds_corr_wind,
+    alpha,
     f"Wind_power_{str(year)}.nc",  
 )  # this expects that ds has variable called s_hub with hub height winds
 print("Capacity factors computed. Next: country subsets and saving data")
@@ -59,13 +58,22 @@ print("Capacity factors computed. Next: country subsets and saving data")
 # Step 3: subset countries
 ds_CF_PV_countries = country_means(ds_CF_PV)
 ds_CF_wind_countries = country_means(ds_CF_wind)
+ds_CF_wind_countries_offshore = country_means(ds_CF_wind, onshore=False)
+
 
 # Step4: Save data
 # wind
-for i in range(3):
-    ds_tmp = ds_CF_wind_countries.isel(turbine=i)
-    turbine_name = str(ds_tmp.turbine.values)
-    store_as_pandas_dataframe(ds_tmp["CF_wind"], name=f"CF_{turbine_name}_{year}")
+for onshore in [True, False]:
+    if onshore:
+        ds_tmp_full = ds_CF_wind_countries
+    else:
+        ds_tmp_full = ds_CF_wind_countries_offshore
+    for i in range(3):
+        ds_tmp = ds_tmp_full.isel(turbine=i)
+        turbine_name = str(ds_tmp.turbine.values)
+        store_as_pandas_dataframe(
+            ds_tmp["CF_wind"], name=f"CF_{turbine_name}_{year}_onshore_{onshore}"
+        )
 # PV
 store_as_pandas_dataframe(ds_CF_PV_countries["pv"], name=f"CF_PV_{year}")
 print("Everything finished and saved")

@@ -5,6 +5,7 @@ import glob
 import time
 import xarray as xr
 from gsee.climatedata_interface.interface import run_interface_from_dataset
+from utils import get_hub_heights, extrapolate_wind_xr
 
 
 out_path = "../output/"
@@ -95,10 +96,15 @@ def update_attrs(ds, var, unitname, varname, long_varname):
     return ds
 
 
-def convert_winds(ds, filename):
+def convert_winds(ds, alpha, filename):
     """
-    Convert wind speeds to wind capacity factors for the three turbines
-    :param ds: xr.dataset with hub height wind speeds available as "s_hub"
+    Convert 100m wind speeds to wind capacity factors for the three turbines.
+
+    This involves scaling winds to hub height with the wind profile exponents alpha.
+    Alpha varies in time and space.
+
+    :param ds: xr.dataset with 100m wind speeds available as "s_hub"
+    :param alpha: wind profile exponents
     :param filename:
     :return:
     """
@@ -111,10 +117,13 @@ def convert_winds(ds, filename):
             compute_powercurves()
             P = Power(turbine_index)
         print(P.turbine_name)
-
+        hub_height = get_hub_heights(P.turbine_name)
+        ds_hub = extrapolate_wind_xr(ds, 100, hub_height, alpha).to_dataset(
+            name="s_hub"
+        )
         t_0 = time.time()
         wind_power = xr.apply_ufunc(
-            P.power_conversion, ds["s_hub"], vectorize=True, dask="allowed"
+            P.power_conversion, ds_hub["s_hub"], vectorize=True, dask="allowed"
         ).to_dataset()
         wind_power = update_attrs(
             wind_power, "s_hub", "", "CF_wind", "normalized_wind_power_generation"
