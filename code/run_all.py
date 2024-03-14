@@ -50,8 +50,8 @@ print("Bias correction finished. Next: conversion to capacity factors")
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
 ds_CF_PV.to_netcdf(f"../output/PV/PV_{year}.nc")
 ds_CF_wind = convert_winds(
-    ds_corr_wind,
-    ds_rho,
+    ds_corr_wind.load(),  # needs to be loaded here because lazy doesn't work with apply_ufunc
+    ds_rho.load(),
     alpha,
     f"Wind_power_{str(year)}.nc",
     density_correct=True,  # if set to False, no density correction is performed
