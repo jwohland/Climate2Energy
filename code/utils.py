@@ -4,6 +4,9 @@ import warnings
 from os import makedirs
 
 
+DATA_PATH = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/"
+
+
 def select_Europe(ds):
     return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
 
@@ -63,7 +66,7 @@ def open_wind_solar(year, test_data=False):
             - global horizontal radiation
             - temperature
     """
-    data_path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam"
+    data_path = f"{DATA_PATH}atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam"
     # Wind
     ds = xr.open_dataset(f"{data_path}.h6.{year}-01-01-03600.nc")
     ds = select_Europe(
@@ -99,6 +102,31 @@ def open_wind_solar(year, test_data=False):
         ds_wind = ds_wind.isel(time=slice(0, 10))
         ds_PV = ds_PV.isel(time=slice(0, 10))
     return ds_wind, ds_PV
+
+
+def open_rho(year, test_data=False):
+    """
+    Open air density and geopotential height
+    :param year:
+    :param test_data:
+    :return:
+    """
+    chunks = {"lat": 10, "lon": 10, "lev": 5, "ilev": 5, "time": 1000}
+    ds_atm = xr.open_dataset(
+        f"{DATA_PATH}atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam.h6.{year}-01-01-03600.nc",
+        chunks=chunks,
+    )
+    ds_rho = select_Europe(
+        zero_mean_longitudes(
+            ds_atm.sel(ilev=slice(900, 1200), lev=slice(900, 1200))[["RHO_CLUBB", "Z3"]]
+            # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev
+            # we here select slices that contain hub height pressure on the GCM grid
+        )
+    )
+    # Keep only few timesteps for test data
+    if test_data:
+        ds_rho = ds_rho.isel(time=slice(0, 10))
+    return ds_rho
 
 
 def zero_mean_longitudes(ds):
@@ -199,3 +227,90 @@ def create_directories():
     ]
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
+
+
+# Air density correction
+def add_target_pressure_level(ds, target_height):
+    """
+    Calculation of atmospheric pressure level that corresponds
+    to target height. This pressure level "p_target" is a function
+    of location and time as it varies with geopotential height and
+    orography.
+
+    Conversion assumes that target height sits between pressure
+    levels 3 and 4, which roughly correspond to 195m and 60m above ground.
+
+    :param ds:
+    :param target_height:
+    :return:
+    """
+    ds = find_height(ds)  # height above ground
+    a = (target_height - ds.height.isel(lev=3)) / (
+        ds.height.isel(lev=4) - ds.height.isel(lev=3)
+    )
+    ds["p_target"] = a * ds.lev.isel(lev=4) + (1 - a) * ds.lev.isel(lev=3)
+    return ds
+
+
+def compute_density_target(
+    ds, target_height=120
+):  # todo target height needs to be aligned with multiple hub heights
+    """
+    Interpolation of atmospheric density which is reported
+    between model levels to the pressure level that corresponds
+    to the target height (e.g., turbine hub height).
+
+    Linear interpolation (air density vs. atmospheric pressure)
+    because air density is approximately linear in pressure in the
+    simulations. It even is perfectly linear when temperature is unchanged
+    between 2 grid boxes (pV=NRT).
+
+    :param ds: xr.Dataset with "Z3" and "RHO_CLUBB" as variables
+    :param target_height:
+    :return:
+    """
+    ds = add_target_pressure_level(ds, target_height=target_height)
+    # interpolate ilev and lev (shifted by half a grid cell) to pressure at target height
+    ds = ds.interp(lev=ds["p_target"], ilev=ds["p_target"])
+    ds = ds.drop(["Z3", "height", "p_target"]).rename({"RHO_CLUBB": "RHO_target"})
+    ds = ds.drop(["lev", "ilev"])
+    return ds
+
+
+def density_correct_winds(ds_wind, ds_rho, target_height):
+    """
+    Perform a wind correction that captures the effects of differing air density.
+    Turbine power curves are reported at standard air density (rho_std) but
+    air density at the wind park site is generally different from that.
+
+    The computation below follows the IEC 61400-12 norm as explained in
+    "WindPRO / Energy Power Curve Air Density Correction And Other Power
+    Curve Options In WindPRO" by Lasse Svenningsen.
+
+    It is based on two ideas.
+
+    First, wind energy density is proportional to rho * u**3, where rho is air density
+    and u is hub height wind speed.
+
+    Second, real power curves deviate from this relationship. That is, a linear scaling of
+    capacity factors with air density makes no sense as it would, for example, also modify
+    the rated capacity. Therefore, we compute an alternative wind speed u' that captures
+    the effects of air density changes and then compute CF(u').
+
+    Basically, if we use the standard air density rho_std, which u' do we need
+    to calculate the same energy density as when taking the real rho and u from the model?
+
+    rho_std * u'**3 = rho * u**3
+
+    Rearranging yields the equation implemented below.
+
+    :param ds_wind:
+    :param ds_rho:
+    :return:
+    """
+    rho_std = 1.225  # kg/m3 according to IEC 61400-12
+    ds_tmp = ds_wind["s_hub"] * (
+        compute_density_target(ds_rho.copy(), target_height)["RHO_target"] / rho_std
+    ) ** (1 / 3)
+    ds_tmp = ds_tmp.to_dataset(name="s_hub")
+    return ds_tmp

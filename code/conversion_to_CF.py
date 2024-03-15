@@ -5,7 +5,7 @@ import glob
 import time
 import xarray as xr
 from gsee.climatedata_interface.interface import run_interface_from_dataset
-from utils import get_hub_heights, extrapolate_wind_xr
+from utils import get_hub_heights, extrapolate_wind_xr, density_correct_winds
 
 
 out_path = "../output/"
@@ -96,16 +96,18 @@ def update_attrs(ds, var, unitname, varname, long_varname):
     return ds
 
 
-def convert_winds(ds, alpha, filename):
+def convert_winds(ds_wind, ds_rho, alpha, filename, density_correct=True):
     """
     Convert 100m wind speeds to wind capacity factors for the three turbines.
 
     This involves scaling winds to hub height with the wind profile exponents alpha.
     Alpha varies in time and space.
 
-    :param ds: xr.dataset with 100m wind speeds available as "s_hub"
+    :param ds_wind: xr.dataset with 100m wind speeds available as "s_hub"
+    :param ds_wind: xr.dataset with air density
     :param alpha: wind profile exponents
     :param filename:
+    :param density_correct: Whether to apply the air density correction. Defaults to True.
     :return:
     """
     wind_power_list = []
@@ -117,11 +119,15 @@ def convert_winds(ds, alpha, filename):
             compute_powercurves()
             P = Power(turbine_index)
         print(P.turbine_name)
+        # Extrapolate to hub height
         hub_height = get_hub_heights(P.turbine_name)
-        ds_hub = extrapolate_wind_xr(ds, 100, hub_height, alpha).to_dataset(
+        ds_hub = extrapolate_wind_xr(ds_wind, 100, hub_height, alpha).to_dataset(
             name="s_hub"
         )
-        t_0 = time.time()
+        # Density correction
+        if density_correct:
+            ds_hub = density_correct_winds(ds_hub, ds_rho, hub_height)
+        # Apply power curve
         wind_power = xr.apply_ufunc(
             P.power_conversion, ds_hub["s_hub"], vectorize=True, dask="allowed"
         ).to_dataset()
@@ -129,10 +135,7 @@ def convert_winds(ds, alpha, filename):
             wind_power, "s_hub", "", "CF_wind", "normalized_wind_power_generation"
         )
         wind_power["turbine"] = P.turbine_name
-        print("wind power conversion took " + str(time.time() - t_0))
-        t_0 = time.time()
         wind_power.to_netcdf(out_path + P.turbine_name + "/" + filename)
-        print("saving took " + str(int(time.time() - t_0)) + " s")
         wind_power_list.append(wind_power)
     wind_power = xr.concat(
         wind_power_list,

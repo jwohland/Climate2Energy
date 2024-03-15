@@ -10,7 +10,7 @@ import sys
 
 print("open files")
 
-try: 
+try:
     year = str(sys.argv[1])  # can be any year between 1990 and 2010
 except IndexError:
     year = "2010"
@@ -25,6 +25,7 @@ create_directories()
 ds_wind, ds_PV = open_wind_solar(
     year, test_data=False
 )  # test_data=True allows for quick test with only 10 timesteps
+ds_rho = open_rho(year, test_data=False)
 print("Files opened. Next: bias correction")
 
 ####################
@@ -49,9 +50,11 @@ print("Bias correction finished. Next: conversion to capacity factors")
 ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
 ds_CF_PV.to_netcdf(f"../output/PV/PV_{year}.nc")
 ds_CF_wind = convert_winds(
-    ds_corr_wind,
+    ds_corr_wind.load(),  # needs to be loaded here because lazy doesn't work with apply_ufunc
+    ds_rho.load(),
     alpha,
-    f"Wind_power_{str(year)}.nc",  
+    f"Wind_power_{str(year)}.nc",
+    density_correct=True,  # if set to False, no density correction is performed
 )  # this expects that ds has variable called s_hub with hub height winds
 print("Capacity factors computed. Next: country subsets and saving data")
 
