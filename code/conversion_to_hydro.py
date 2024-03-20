@@ -6,6 +6,8 @@ import sys
 import subprocess
 import xarray as xr
 import pandas as pd
+import scipy
+from sklearn.metrics import mean_squared_error
 
 path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/lnd/hist/"
 
@@ -21,7 +23,10 @@ def open_runoff(year):
         ds = xr.open_dataset(f"{path}b.e212.BHISTcmip6.f09_g17.1500.clm2.h6.{y}-01-01-03600.nc")
         runoff = ds.rename({"QRUNOFF":"runoff"})["runoff"].to_dataset()
         runoffs.append(zero_mean_longitudes(select_Europe(runoff)))
-    runoff = xr.concat(runoffs,dim="time").sel(time=slice(f"{year-1}-12",f"{year+1}-01")) # only keeping one month before and after our calendar year
+    #  only keeping one month before and after our calendar year
+    runoff = xr.concat(runoffs,dim="time").sel(time=slice(f"{year-1}-12",f"{year+1}-01")) 
+    # aggregate to daily values
+    runoff = runoff.resample(time="D").sum()
     return runoff
 
 def read_pecd_excel(file,sheet):
@@ -78,10 +83,9 @@ def open_pecd_generation():
                                                    dims=["time"],
                                                    coords ={"time":dates})
     # create dataset
-    print(pecd_countries)
-    pecd = xr.concat([pecd_countries[country] for country in pecd_countries], dim = "country")
-    print(pecd)
+    pecd = xr.concat([pecd_countries[country] for country in pecd_countries], dim = "country").to_dataset(name="generation")
     pecd["country"] = list(pecd_countries.keys()) 
+    
     print(f"countries with no or empty data: {not_used}")
     return pecd
 
@@ -96,7 +100,10 @@ def open_era():
     if file == []:
         subprocess.run(["bash", f"preprocess/preprocess_runoff_ERA5_for_transfer.sh"])
         file = glob.glob("../output/runoff_ERA5_1982-2019.nc")
-    return xr.open_dataset(file[0])
+    era5 = xr.open_dataset(file[0])
+    # remove leap days
+    era5 = era5.sel(time=~((era5.time.dt.month == 2) & (era5.time.dt.day == 29)))
+    return era5
 
 def open_entso_e_generation():
     # TODO: write up how to open entso e data
@@ -104,7 +111,7 @@ def open_entso_e_generation():
 
 def weighted_aggregation(ds):
     # TODO: write up weighted average code
-    return ds
+    return ds.mean(("lat","lon"))
 
 def lin_transfer(runoff_cesm2, runoff_era,generation):
     """ 
@@ -152,10 +159,10 @@ def hydro_conversion():
     except IndexError:
         year = "2010"
     print(year)
-
+    
     # create necessary directories (for pecd and entso-e data)
     create_directories()
-
+    
     # =====================================================
     # === Step 1: Open, bias correct and aggregate data ===
     # =====================================================
@@ -164,25 +171,24 @@ def hydro_conversion():
     # === CESM2 runoff === 
     runoff = open_runoff(year)
     # Bias correction
-    #runoff = bias_correct_dataset(runoff, "runoff")  TODO: fix bug
-    runoff = runoff["runoff"]
+    #runoff = bias_correct_dataset(runoff, "runoff").to_dataset("runoff")  TODO: fix bug
     
     # === ERA5 runoff (1982-2019) === 
-    hydro["runoff_era5"] = open_era()["runoff"]
+    runoff_era5 = open_era().sel(time=slice("1982","2017"))
     
     # === Smart aggregation over country ===
     runoff = weighted_aggregation(runoff)
-    hydro = weighted_aggregation(hydro)
+    runoff_era5 = weighted_aggregation(runoff_era5)
     
     # === PECD generation (1982-2017) ===
     # conversion data set for run-or-river, already 1 value per country
-    hydro["generation_pecd"] = open_pecd_generation() 
+    generation_pecd = open_pecd_generation()
     
     # ENTSO-E generation (2016-2019)
     entso_e = open_entso_e_generation() # conversion data set for inflows 
-
+    
     print("All files opened. Conversion starting")
-
+    
     # ================================================
     # === Step 2: Convert to hydropower generation ===
     # ================================================
@@ -190,24 +196,25 @@ def hydro_conversion():
     # === Run-of-river ===
     # Treat seasons separately
     season_transfer = []
-    for season in hydro.groupby("time.season"):
-        runoff_cesm2_season = runoff.groupby("time.season")[season[0]]
-        season_transfer.append(lin_transfer_all_countries(runoff_cesm2_season,
-                                                          season[1].runoff_era5,
-                                                          season[1].generation_pecd
+    for season in runoff.groupby("time.season"):
+        runoff_era5_season = dict(runoff_era5.groupby("time.season"))[season[0]]
+        generation_pecd_season = dict(generation_pecd.groupby("time.season"))[season[0]]
+        season_transfer.append(lin_transfer_all_countries(season[1].runoff,
+                                                          runoff_era5_season.runoff,
+                                                          generation_pecd_season.generation
                                                          ).to_dataset(name="generation_cesm2")
                               )
-    ror = xr.concat(xs,dim="time").sortby("time") # add seasons together and sort chunks by time
+    ror = xr.concat(season_transfer,dim="time").sortby("time") # add seasons together and sort chunks by time
     # Rolling mean
     ror = ror.rolling(time=7,center=True).mean()
     # TODO: change implementation to fit your needs
     
     # === Reservoir/pumped hydro
     # TODO: implement your setup (potentially streamline with r-o-r setup
-    
+    inflow = xr.DataArray()
     # Save both hydro types in one dictionary
     output = {
-        "ror":ror,
+        "ror":ror.generation_cesm2,
         "inflow":inflow
     }
     
