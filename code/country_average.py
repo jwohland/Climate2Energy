@@ -8,40 +8,41 @@ def get_country_list():
     Leonard Goeke and Jonas Savelsberg
     :return:
     """
-    countries = [
-        "Albania",
-        "Austria",
-        "Bosnia and Herzegovina",
-        "Belgium",
-        "Bulgaria",
-        "Switzerland",
-        "Czech Republic",
-        "Germany",
-        "Denmark",
-        "Estonia",
-        "Spain",
-        "Finland",
-        "France",
-        "Greece",
-        "Croatia",
-        "Hungary",
-        "Ireland",
-        "Italy",
-        "Lithuania",
-        "Latvia",
-        "Montenegro",
-        "Macedonia",
-        "Netherlands",
-        "Norway",
-        "Poland",
-        "Portugal",
-        "Romania",
-        "Serbia",
-        "Sweden",
-        "Slovenia",
-        "Slovakia",
-        "United Kingdom",
-    ]
+    
+    countries = {
+        "Albania":"AL",
+        "Austria":"AT",
+        "Bosnia and Herzegovina":"BA",
+        "Belgium":"BE",
+        "Bulgaria":"BG",
+        "Switzerland":"CH",
+        "Czech Republic":"CZ",
+        "Germany":"DE",
+        "Denmark":"DK", 
+        "Estonia":"EE",
+        "Spain":"ES",
+        "Finland":"FI",
+        "France":"FR",
+        "Greece":"GR",
+        "Croatia":"HR",
+        "Hungary":"HU",
+        "Ireland":"IE",
+        "Italy":"IT", #several bidding zones
+        "Lithuania":"LT",
+        "Latvia":"LV",
+        "Montenegro":"ME",
+        "Macedonia":"MK",
+        "Netherlands":"NL",
+        "Norway":"NO", #several bidding zones
+        "Poland":"PL",
+        "Portugal":"PT",
+        "Romania":"RO",
+        "Serbia":"RS",
+        "Sweden":"SE", #several bidding zones
+        "Slovenia":"SI",
+        "Slovakia":"SK",
+        "United Kingdom":"UK",
+    }
     return countries
 
 

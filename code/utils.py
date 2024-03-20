@@ -166,7 +166,7 @@ def store_as_pandas_dataframe(ds, name):
     ds.to_pandas().to_csv("../output/" + name + ".csv")
 
 
-#
+
 def interpolate_wind_xr(ds, output_height=120):
     """
     Calculates wind speeds at output height using data at evolving heights and
@@ -224,6 +224,8 @@ def create_directories():
         "../output/SWT120_3600",  # Wind turbine 2
         "../output/SWT142_3150",  # Wind turbine 3
         "../plots/",  # plots
+        "../inputs/pecd/", # for pecd input data (r-o-r)
+        "../inputs/entsoe/", # for entsoe transparency data (inflow)
     ]
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
