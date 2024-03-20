@@ -245,7 +245,9 @@ def create_directories():
         for bc_realization in ["A", "B", "C"]
         for scenario in ["historical", "SSP370", "SSP245"]
         for realization in ["A", "B", "C"]
-        for sub_folder in ["atmospheric_variables", "output_variables"]
+        for sub_folder in ["atmospheric_variables", "output_variables"],
+        "../inputs/pecd/", # for pecd input data (r-o-r)
+        "../inputs/entsoe/", # for entsoe transparency data (inflow)
     ]
     required_directories.append("../plots/")  # plots
 
