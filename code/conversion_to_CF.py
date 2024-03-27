@@ -37,9 +37,13 @@ class Power:
     """
 
     def __init__(self, turbine_index):
-        self.power_curve = pd.read_pickle(
+        power_curve = pd.read_pickle(
             sorted(glob.glob("../inputs/power_curves/*.p"))[turbine_index]
         )
+        power_curve[
+            power_curve < 0
+        ] = 0  # cubic spline interpolation leads to unphysical negative values (order of 10**(-5)) when power curves increases from or drops to zero
+        self.power_curve = power_curve
         self.turbine_name = self.power_curve.keys()[0].replace(
             "/", "_"
         )  # / leads to issues when saving
