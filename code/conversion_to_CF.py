@@ -1,61 +1,49 @@
-from windpowerlib import wind_turbine as wt
 import numpy as np
 import pandas as pd
 import glob
-import time
 import xarray as xr
 from gsee.climatedata_interface.interface import run_interface_from_dataset
 from utils import get_hub_heights, extrapolate_wind_xr, density_correct_winds
 
 
 out_path = "../output/"
-powercurve_data = "../inputs/power_curves.csv"  #'/data/wind-python-windpowerlib-v0.2.0/windpowerlib/oedb/power_curves.csv'
-
-
-def interpol(power):
-    """
-    Linear interpolation of power curve to a resoltion of 0.01 m/s
-    :param power: DataFrame with index wind speed and value power generation
-    :return:
-    """
-    start, end = power.first_valid_index(), power.last_valid_index()
-    power = power.reindex(
-        np.arange(start, end + 0.01, 0.01), tolerance=10 ** (-7), method="nearest"
-    )
-    power = power.interpolate(method="linear")
-    power.index = np.round(power.index, decimals=2)
-    return power
-
-
-def compute_powercurves():
-    """
-    Compute the powercurves using the three turbines considered representative in
-    Wohland et al. (2021) and save them as pickled files for later use
-    :return:
-    """
-    rep_turbines = ["E-126/7580", "SWT120/3600", "SWT142/3150"]
-    for i, turbine_name in enumerate(rep_turbines):
-        power_curve = wt.get_turbine_data_from_file(turbine_name, powercurve_data)
-        power_curve.value /= power_curve.value.max()  # normalization
-        power_curve = power_curve.set_index("wind_speed").rename(
-            columns={"value": turbine_name}
-        )
-        power_curve = interpol(power_curve)
-        # save
-        power_curve.to_pickle(out_path + "final_power_curve_" + str(i) + ".p")
 
 
 class Power:
     """
-    Wind power  conversion class. Based on pre-computed power curves, this
-    class provides functionality to translate hub height wind speeds into
-    capacity factors.
+    Wind power  conversion class. Based on pre-computed power curves taken from
+    Wohland et al. (2021), this class provides functionality to translate hub
+    height wind speeds into capacity factors.
+
+    The powercurves initially come from the windpowerlib database (Haas et al., 2019)
+    and are available from
+
+    https://github.com/wind-python/windpowerlib/blob/dev/windpowerlib/oedb/power_curves.csv
+
+    Power curves are smoothed to account for subgridscale turbulence using the
+    approach detailed in Knorr (2016) and a turbulence intensity TI = 0.1246 (see
+    figure B2 of Wohland et al., 2021).
+
+    References
+
+    1. Wohland, J., Brayshaw, D. & Pfenninger, S. Mitigating a century of European renewable
+    variability with transmission and informed siting. Environ. Res. Lett. 16, 064026 (2021).
+
+    2. Knorr K 2016 Modellierung von raumzeitlichen Eigenschaften der Windenergieeinspeisung
+    für wetterdatenbasierte Windleistungssimulationen Dissertation (Fachbereich
+    Elektrotechnik/Informatik der Universität Kassel)
+
+    Haas S, Schachler B and Krien U 2019 Windpowerlib—a python library to model wind power—v.0.2.0
     """
 
     def __init__(self, turbine_index):
-        self.power_curve = pd.read_pickle(
-            sorted(glob.glob("../output/*.p"))[turbine_index]
+        power_curve = pd.read_pickle(
+            sorted(glob.glob("../inputs/power_curves/*.p"))[turbine_index]
         )
+        power_curve[
+            power_curve < 0
+        ] = 0  # cubic spline interpolation leads to unphysical negative values (order of 10**(-5)) when power curves increases from or drops to zero
+        self.power_curve = power_curve
         self.turbine_name = self.power_curve.keys()[0].replace(
             "/", "_"
         )  # / leads to issues when saving
@@ -112,12 +100,8 @@ def convert_winds(ds_wind, ds_rho, alpha, filename, density_correct=True):
     """
     wind_power_list = []
     for turbine_index in range(3):
-        # Open power curves if they exists, otherwise compute them
-        try:
-            P = Power(turbine_index)
-        except:
-            compute_powercurves()
-            P = Power(turbine_index)
+        # Open pre-computed smoothed power curves
+        P = Power(turbine_index)
         print(P.turbine_name)
         # Extrapolate to hub height
         hub_height = get_hub_heights(P.turbine_name)
