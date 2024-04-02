@@ -11,6 +11,20 @@ def select_Europe(ds):
     return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
 
 
+def get_time_range(scenario):
+    """
+    Start and end years of the different scenarios covered in this analysis
+    :param scenario:
+    :return:
+    """
+    range_dict = {
+        "historical": range(1995, 2015),
+        "SSP370": range(2080, 2100),
+        "SSP245": range(2080, 2100),
+    }
+    return range_dict[scenario]
+
+
 def find_height(ds):
     """
     Calculates the height of dataset model levels
@@ -224,7 +238,9 @@ def create_directories():
         for scenario in ["historical", "SSP370", "SSP245"]
         for realization in ["A", "B", "C"]
         for sub_folder in ["atmospheric_variables", "output_variables"]
-    ].append("../plots/")   # plots
+    ].append(
+        "../plots/"
+    )  # plots
 
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
