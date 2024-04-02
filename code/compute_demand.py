@@ -3,18 +3,15 @@ from utils import *
 import pandas as pd
 import demand_ninja  # todo currently is done in seperate environment. Can we integrate it?
 import subprocess
+import sys
 
 
-def open_xarray_demandninja(year=1990):
+def open_xarray_demandninja(year, scenario, realization):
     """
     open full datasets with variables needed for demand calculation
     """
-    path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/"
     ds_atm = xr.open_dataset(
-        path
-        + "atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam.h6."
-        + str(year)
-        + "-01-01-03600.nc",
+        get_input_filename(scenario, realization, year),
         chunks={"lat": 10, "lon": 10, "time": 3000},
     )
     ds_atm = select_Europe(
@@ -303,7 +300,7 @@ def scale_heating_demand(target_share, df_current_share, df_demand):
     return df_demand
 
 
-def demand_conversion():
+def demand_conversion(scenario, realization):
     """
     Execute conversion from CESM2 output to heating and cooling demand over all historical years (1990 - 2010).
 
@@ -323,8 +320,8 @@ def demand_conversion():
     pop_density = compute_country_population_density()
     var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
 
-    for year in range(1990, 2010):
-        ds_ninja = open_xarray_demandninja(year)
+    for year in get_time_range(scenario):
+        ds_ninja = open_xarray_demandninja(year, scenario, realization)
         ds_ninja.load()  # loading here once speeds up the following loop
         result_list = []  # to store country level results
         for country in demand_params.index:
@@ -349,21 +346,25 @@ def demand_conversion():
             result_list.append(result)
         results = reformat_demandninja(pd.concat(result_list))
 
-        # todo should this be moved to run_all?
         # Save raw
         for demand_type in ["heating_demand", "cooling_demand"]:
-            file_suffix = demand_type + "_" + str(year)
-            results.loc[demand_type].to_csv("../output/" + file_suffix + ".csv")
-
-        # Save scaled heating
-        demand_type = "heating_demand"
-        file_suffix = demand_type + "_" + str(year) + "_fully_electrified"
-        # scale to target share
-        df_heating_scaled = scale_heating_demand(
-            1, compute_share_df(), results.loc[demand_type].copy()
-        )
-        df_heating_scaled.to_csv("../output/" + file_suffix + ".csv")
+            file_suffix = demand_type.replace("_", "-") + "_" + str(year)
+            results.loc[demand_type].to_csv(f"{output_path}{file_suffix}.csv")
+            if demand_type == "heating_demand":
+                # Save scaled heating
+                file_suffix += "_fully-electrified"
+                # scale to target share
+                df_heating_scaled = scale_heating_demand(
+                    1, compute_share_df(), results.loc[demand_type].copy()
+                )
+                df_heating_scaled.to_csv(f"{output_path}{file_suffix}.csv")
 
 
 if __name__ == "__main__":
+    scenario = str(sys.argv[1])
+    realization = str(sys.argv[2])
+    bc_realization = str(sys.argv[3])
+    output_path = (
+        f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/"
+    )
     demand_conversion()
