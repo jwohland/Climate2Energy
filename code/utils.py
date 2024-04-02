@@ -4,9 +4,6 @@ import warnings
 from os import makedirs
 
 
-DATA_PATH = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/"
-
-
 def select_Europe(ds):
     return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
 
@@ -23,6 +20,39 @@ def get_time_range(scenario):
         "SSP245": range(2080, 2100),
     }
     return range_dict[scenario]
+
+
+def get_input_filename(scenario, realization, year):
+    """
+    Navigate to the input files
+    :param scenario:
+    :param realization:
+    :param year:
+    :return:
+    """
+    shared_path = f"/net/meso/climphys/cesm212/"
+    tmp = "b.e212.B"
+    if scenario == "historical":
+        tmp += "HIST"
+    else:
+        tmp += scenario  # i.e., + SSP370 or SSP245
+    tmp += "cmip6.f09_g17."
+    if realization == "A":
+        tmp += "1500"
+    elif realization == "B":
+        if scenario == "historical":
+            tmp += "1000"
+        elif scenario == "SSP370":
+            tmp += "0600"
+    elif realization == "C":
+        if scenario == "historical":
+            tmp += "1200"
+        elif scenario == "SSP370":
+            tmp += "0900"
+    assembled_path = (
+        f"{shared_path}{tmp}/archive/atm/hist/{tmp}.cam.h6.{year}-01-01-03600.nc"
+    )
+    return assembled_path
 
 
 def find_height(ds):
@@ -65,7 +95,7 @@ def get_hub_heights(turbine_name):
     return hub_height_dict[turbine_name]
 
 
-def open_wind_solar(year, test_data=False):
+def open_wind_solar(year, scenario, realization, test_data=False):
     """
     Open the data needed for wind and solar energy calculation and output
     as xr.Datasets.
@@ -80,67 +110,45 @@ def open_wind_solar(year, test_data=False):
             - global horizontal radiation
             - temperature
     """
-    data_path = f"{DATA_PATH}atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam"
+    chunks = {"lat": 10, "lon": 10, "lev": 5, "ilev": 5, "time": 1000}
     # Wind
-    ds = xr.open_dataset(f"{data_path}.h6.{year}-01-01-03600.nc")
-    ds = select_Europe(
-        zero_mean_longitudes(ds).isel(lev=slice(30, 32))  # lowermost 2 levels
+    ds_atm = select_Europe(
+        zero_mean_longitudes(
+            xr.open_dataset(
+                get_input_filename(scenario, realization, year), chunks=chunks
+            )
+        )
     )
-    ds_wind = np.sqrt(ds["U"] ** 2 + ds["V"] ** 2)
+    # Keep only few timesteps for test data
+    if test_data:
+        ds_atm = ds_atm.isel(time=slice(0, 10))
+    ds_wind = ds_atm.isel(lev=slice(30, 32))  # lowermost 2 levels
+    ds_wind = np.sqrt(ds_wind["U"] ** 2 + ds_wind["V"] ** 2)
     ds_wind = ds_wind.to_dataset(
         name="S"
     )  # call winds S here because they are still at model level
-    ds_wind["Z3"] = ds["Z3"]
+    ds_wind["Z3"] = ds_atm["Z3"]
     ds_wind = find_height(ds_wind)
 
+    # air density
+    ds_rho = ds_atm.sel(ilev=slice(900, 1200), lev=slice(900, 1200))[
+        ["RHO_CLUBB", "Z3"]
+    ]  # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev
+    # we here select slices that contain hub height pressure on the GCM grid
+
     # Solar
-    ds = xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc")
-    rad = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})[
+    ds_PV = rad = ds_atm.rename({"FSDS": "global_horizontal"})[
         "global_horizontal"
-    ]
-    t = zero_mean_longitudes(xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc"))[
-        "TREFHT"
-    ]
-    ds_PV = rad.to_dataset()
-    ds_PV["temperature"] = t
+    ].to_dataset()
+    ds_PV["temperature"] = ds_atm["TREFHT"]
     ds_PV = temp_cel(ds_PV)  # temperature in celsius
-    ds_PV = select_Europe(ds_PV)
     with warnings.catch_warnings():  # to_datetimeindex throws a warning because CESM uses non-leap year calendar. We verified that this is not a problem (see notebook 13) and catch the warning here.
         warnings.simplefilter("ignore")
         ds_PV["time"] = ds_PV.indexes[
             "time"
         ].to_datetimeindex()  # time index that GSEE understands
 
-    # Keep only few timesteps for test data
-    if test_data:
-        ds_wind = ds_wind.isel(time=slice(0, 10))
-        ds_PV = ds_PV.isel(time=slice(0, 10))
-    return ds_wind, ds_PV
-
-
-def open_rho(year, test_data=False):
-    """
-    Open air density and geopotential height
-    :param year:
-    :param test_data:
-    :return:
-    """
-    chunks = {"lat": 10, "lon": 10, "lev": 5, "ilev": 5, "time": 1000}
-    ds_atm = xr.open_dataset(
-        f"{DATA_PATH}atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam.h6.{year}-01-01-03600.nc",
-        chunks=chunks,
-    )
-    ds_rho = select_Europe(
-        zero_mean_longitudes(
-            ds_atm.sel(ilev=slice(900, 1200), lev=slice(900, 1200))[["RHO_CLUBB", "Z3"]]
-            # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev
-            # we here select slices that contain hub height pressure on the GCM grid
-        )
-    )
-    # Keep only few timesteps for test data
-    if test_data:
-        ds_rho = ds_rho.isel(time=slice(0, 10))
-    return ds_rho
+    return ds_wind, ds_rho, ds_PV
 
 
 def zero_mean_longitudes(ds):
