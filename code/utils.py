@@ -219,12 +219,13 @@ def create_directories():
     """
 
     required_directories = [
-        "../output/PV",  # PV output
-        "../output/E-126_7580",  # Wind turbine 1
-        "../output/SWT120_3600",  # Wind turbine 2
-        "../output/SWT142_3150",  # Wind turbine 3
-        "../plots/",  # plots
-    ]
+        f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/{sub_folder}"
+        for bc_realization in ["A", "B", "C"]
+        for scenario in ["historical", "SSP370", "SSP245"]
+        for realization in ["A", "B", "C"]
+        for sub_folder in ["atmospheric_variables", "output_variables"]
+    ].append("../plots/")   # plots
+
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
 
