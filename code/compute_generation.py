@@ -23,10 +23,9 @@ for year in get_time_range(scenario):
     ####################
     # Step 0: Open data
     ####################
-    ds_wind, ds_PV = open_wind_solar(
-        year, test_data=False
+    ds_wind, ds_rho, ds_PV = open_wind_solar(
+        year, scenario, realization, test_data=False
     )  # test_data=True allows for quick test with only 10 timesteps
-    ds_rho = open_rho(year, test_data=False)
     print("Files opened. Next: bias correction")
 
     ####################
