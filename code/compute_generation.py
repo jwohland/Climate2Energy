@@ -13,7 +13,7 @@ print("open files")
 scenario = str(sys.argv[1])
 realization = str(sys.argv[2])
 bc_realization = str(sys.argv[3])
-output_path = f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/"
+output_path = get_output_path(bc_realization, scenario, realization)
 print(f"{scenario}, {realization}, {bc_realization}")
 
 # Create directory structure

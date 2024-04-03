@@ -3,6 +3,7 @@ import xarray as xr
 import warnings
 from os import makedirs
 import dask
+
 dask.config.set({"array.slicing.split_large_chunks": True})
 
 
@@ -26,7 +27,7 @@ def get_time_range(scenario):
 
 def get_input_filename(scenario, realization, year):
     """
-    Navigate to the input files
+    Provide the path to the non-bias corrected CESM2 atmospheric variable files
     :param scenario:
     :param realization:
     :param year:
@@ -248,9 +249,7 @@ def create_directories():
         for realization in ["A", "B", "C"]
         for sub_folder in ["atmospheric_variables", "output_variables"]
     ]
-    required_directories.append(
-        "../plots/"
-    )  # plots
+    required_directories.append("../plots/")  # plots
 
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
@@ -341,3 +340,14 @@ def density_correct_winds(ds_wind, ds_rho, target_height):
     ) ** (1 / 3)
     ds_tmp = ds_tmp.to_dataset(name="s_hub")
     return ds_tmp
+
+
+def get_output_path(bc_realization, scenario, realization):
+    """
+
+    :param bc_realization: A, B, C denoting the historical CESM2 realization used in bias correction
+    :param scenario: historical, SSP370, SSP245
+    :param realization: A, B, C denoting the CESM2 realization that has been bias corrected
+    :return:
+    """
+    return f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/"
