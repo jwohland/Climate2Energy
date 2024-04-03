@@ -7,19 +7,20 @@ import sys
 ####################
 # Prep
 ####################
-
-print("open files")
-
 scenario = str(sys.argv[1])
 realization = str(sys.argv[2])
 bc_realization = str(sys.argv[3])
 output_path = get_output_path(bc_realization, scenario, realization)
-print(f"{scenario}, {realization}, {bc_realization}")
+print(
+    f"Computing generation for scenario {scenario} realization {realization},"
+    f" using bias-correction based on historical realization {bc_realization}"
+)
 
 # Create directory structure
 create_directories()
 
 for year in get_time_range(scenario):
+    print(f"Open files for year {year}")
     ####################
     # Step 0: Open data
     ####################
