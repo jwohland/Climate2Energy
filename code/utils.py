@@ -2,6 +2,8 @@ import numpy as np
 import xarray as xr
 import warnings
 from os import makedirs
+import dask
+dask.config.set({"array.slicing.split_large_chunks": True})
 
 
 def select_Europe(ds):
