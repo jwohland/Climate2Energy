@@ -76,9 +76,9 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
     # bias_correction
     corrected = xr.apply_ufunc(
         bias_correct_per_loc,
-        reference[var],
-        model[var],
-        ds[var],
+        reference[var].load(),
+        model[var].load(),
+        ds[var].load(),
         vectorize=True,
         input_core_dims=[["time"], ["time"], ["time"]],
         exclude_dims=set(("time",)),
