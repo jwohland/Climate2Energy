@@ -6,21 +6,41 @@ import subprocess
 import sys
 
 
-def open_xarray_demandninja(year, scenario, realization):
+def open_xarray_demandninja(year, bc_realization, scenario, realization):
     """
-    open full datasets with variables needed for demand calculation
+    Open full datasets with variables needed for demand calculation
+
+    Primary variables (i.e., temperature and radiation) are loaded as pre-computed
+    bias-corrected fields.
+
+    Secondary variables (i.e., humidity and 10m winds) are loaded as raw CESM2 output.
     """
+    # Open primary variables that have been bias-corrected already
+    output_path = get_output_path(bc_realization, scenario, realization)
+    try:
+        ds_temp = xr.open_dataset(
+            f"{output_path}atmospheric_variables/bced_CESM2_temperature_{year}.nc"
+        )
+        ds_radiation = xr.open_dataset(
+            f"{output_path}atmospheric_variables/bced_CESM2_global-horizontal_{year}.nc"
+        )
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"Bias-corrected temperature and radiation input files do not exist {bc_realization} {scenario} {realization}"
+        )
+
     ds_atm = xr.open_dataset(
         get_input_filename(scenario, realization, year),
         chunks={"lat": 10, "lon": 10, "time": 3000},
     )
-    ds_atm = select_Europe(
-        zero_mean_longitudes(ds_atm[["FSDS", "TREFHT", "U10", "QREFHT"]])
-    )
+    ds_atm = select_Europe(zero_mean_longitudes(ds_atm[["U10", "QREFHT"]]))
     # Correct units so that they match with demandninja
     ds_atm["QREFHT"] *= 1000  # CESM2 gives kg/kg but demandninja wants g/kg
     ds_atm["U10"] *= (2 / 10) ** 0.14  # power law conversion from 10m to 2m
-    ds_atm["TREFHT"] -= 273.15  # convert from K to C
+    ds_atm["FSDS"] = ds_radiation
+    ds_atm[
+        "TREFHT"
+    ] = ds_temp  # todo check that this one is already in C and does not need conversion
     return ds_atm
 
 
@@ -300,7 +320,7 @@ def scale_heating_demand(target_share, df_current_share, df_demand):
     return df_demand
 
 
-def demand_conversion(scenario, realization):
+def demand_conversion(bc_realization, scenario, realization):
     """
     Execute conversion from CESM2 output to heating and cooling demand over all historical years (1990 - 2010).
 
@@ -319,9 +339,9 @@ def demand_conversion(scenario, realization):
     demand_params = parameter_fill_ninja(demand_params)  # fill missing values
     pop_density = compute_country_population_density()
     var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
-
+    output_path = get_output_path(bc_realization, scenario, realization)
     for year in get_time_range(scenario):
-        ds_ninja = open_xarray_demandninja(year, scenario, realization)
+        ds_ninja = open_xarray_demandninja(year, bc_realization, scenario, realization)
         ds_ninja.load()  # loading here once speeds up the following loop
         result_list = []  # to store country level results
         for country in demand_params.index:
@@ -364,7 +384,4 @@ if __name__ == "__main__":
     scenario = str(sys.argv[1])
     realization = str(sys.argv[2])
     bc_realization = str(sys.argv[3])
-    output_path = (
-        f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/"
-    )
-    demand_conversion()
+    demand_conversion(bc_realization, scenario, realization)
