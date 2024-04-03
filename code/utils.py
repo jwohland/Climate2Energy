@@ -239,7 +239,6 @@ def create_directories():
     Creates the directories that are needed to store the output in the desired structure
     :return:
     """
-
     required_directories = [
         "../inputs/pecd/", # for pecd input data (r-o-r)
         "../inputs/entsoe/", # for entsoe transparency data (inflow)
@@ -248,7 +247,8 @@ def create_directories():
         for scenario in ["historical", "SSP370", "SSP245"]
         for realization in ["A", "B", "C"]
         for sub_folder in ["atmospheric_variables", "output_variables"]
-    ].append(
+    ]
+    required_directories.append(
         "../plots/"
     )  # plots
 
