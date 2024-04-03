@@ -239,14 +239,14 @@ def create_directories():
     Creates the directories that are needed to store the output in the desired structure
     :return:
     """
-
     required_directories = [
         f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/{sub_folder}"
         for bc_realization in ["A", "B", "C"]
         for scenario in ["historical", "SSP370", "SSP245"]
         for realization in ["A", "B", "C"]
         for sub_folder in ["atmospheric_variables", "output_variables"]
-    ].append(
+    ]
+    required_directories.append(
         "../plots/"
     )  # plots
 
