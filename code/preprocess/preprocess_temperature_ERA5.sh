@@ -16,8 +16,8 @@ for year in {1995..2014}
     -sellonlatbox,-15,50,30,75 \
     -remapbil,../inputs/CESM_atm_grid.txt \
     -sellonlatbox,-20,55,25,80 \
-    /net/atmos/data/ERA5_deterministic/recent/0.25deg_lat-lon_1h/processed/regrid/era5_deterministic_recent.t2m.025deg.1h."${year}".nc \
-    ${output_path}/tmp_"${year}"_temperature_ERA5.nc
+    /net/atmos/data/ERA5_deterministic/recent/0.25deg_lat-lon_1h/processed/regrid/era5_deterministic_recent.t2m.025deg.1h.${year}.nc \
+    ${output_path}/tmp_${year}_temperature_ERA5.nc
 done
 # merge all years
 cdo mergetime ${output_path}/tmp_*_temperature_ERA5.nc ${output_path}/Raw_ERA5_temperature.nc
