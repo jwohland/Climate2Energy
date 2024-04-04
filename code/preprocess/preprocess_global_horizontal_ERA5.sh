@@ -17,8 +17,8 @@ for year in {1995..2014}
     -sellonlatbox,-15,50,30,75 \
     -remapcon,../inputs/CESM_atm_grid.txt \
     -sellonlatbox,-20,55,25,80 \
-    ${input_path_ERA5}/era5_deterministic_recent.ssrd.025deg.1h."${year}".nc \
-    ${output_path}/tmp_"${year}"_global_horizontal_ERA5.nc
+    ${input_path_ERA5}/era5_deterministic_recent.ssrd.025deg.1h.${year}.nc \
+    ${output_path}/tmp_${year}_global_horizontal_ERA5.nc
 done
 # merge all years
 cdo mergetime ${output_path}/tmp_*_global_horizontal_ERA5.nc ${output_path}/Raw_ERA5_global_horizontal.nc
