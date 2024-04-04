@@ -6,6 +6,13 @@ import dask
 
 dask.config.set({"array.slicing.split_large_chunks": True})
 
+# Dictionary that connects scenarios (historical, SSP370, SSP245), realization names (A,B,C) and identifiers used in CESM2 output (4 digit numbers, e.g., "1000")
+CESM2_REALIZATION_DICT = {
+    "historical": {"A": "1500", "B": "1000", "C": "1200"},
+    "SSP370": {"A": "1500", "B": "0600", "C": "0900"},
+    "SSP245": {"A": "1500"},
+}
+
 
 def select_Europe(ds):
     return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
@@ -40,18 +47,7 @@ def get_input_filename(scenario, realization, year):
     else:
         tmp += scenario  # i.e., + SSP370 or SSP245
     tmp += "cmip6.f09_g17."
-    if realization == "A":
-        tmp += "1500"
-    elif realization == "B":
-        if scenario == "historical":
-            tmp += "1000"
-        elif scenario == "SSP370":
-            tmp += "0600"
-    elif realization == "C":
-        if scenario == "historical":
-            tmp += "1200"
-        elif scenario == "SSP370":
-            tmp += "0900"
+    tmp += CESM2_REALIZATION_DICT[scenario][realization]
     assembled_path = (
         f"{shared_path}{tmp}/archive/atm/hist/{tmp}.cam.h6.{year}-01-01-03600.nc"
     )
