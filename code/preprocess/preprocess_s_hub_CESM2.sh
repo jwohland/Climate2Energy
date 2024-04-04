@@ -3,7 +3,7 @@ bc_realization=$1  # name of CESM2 realization used in bias correction. Options:
 CESM2_realization=$2  # Number of CESM2 realization used in bias corrected. This is linked to above as: A: 1500, B: 1000, C: 1200
 
 CESM2_path=/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.${CESM2_realization}/archive/atm/hist
-output_path=../ouktput/bias_correction/${bc_realization}
+output_path=../output/bias_correction/${bc_realization}
 
 for year in {1995..2014}
     do
