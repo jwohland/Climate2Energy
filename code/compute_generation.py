@@ -35,14 +35,14 @@ for year in get_time_range(scenario):
     ds_corr_PV = xr.Dataset()
     for var in ["temperature", "global_horizontal"]:
         print(var)
-        ds_corr_PV[var] = bias_correct_dataset(ds_PV, var)
+        ds_corr_PV[var] = bias_correct_dataset(ds_PV, var, bc_realization)
 
     print("s_hub")
     # Extrapolate model to 100m (i.e., ERA5 height), then bias correct
     ds_interpolated, alpha = interpolate_wind_xr(
         ds_wind, 100
     )  # careful: this outputs s_hub even though these are 100m winds
-    ds_corr_wind = bias_correct_dataset(ds_interpolated, "s_hub")
+    ds_corr_wind = bias_correct_dataset(ds_interpolated, "s_hub", bc_realization)
     print("Bias correction finished. Next: conversion to capacity factors")
 
     # Save bias-corrected fields
