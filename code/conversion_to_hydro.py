@@ -8,6 +8,7 @@ import xarray as xr
 import pandas as pd
 import scipy
 from sklearn.metrics import mean_squared_error
+import os
 
 path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/lnd/hist/"
 
@@ -50,7 +51,6 @@ def open_entsoe_ror():
     year_0 = 2017
     year_N = 2022
 
-    folder_path = "Data/Transparency/"
     # read all the folders in the path. Each folder corresponds to a country
     country_list = [folder for folder in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, folder))]
 
