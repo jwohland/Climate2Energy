@@ -51,6 +51,7 @@ def open_entsoe_ror():
     year_0 = 2017
     year_N = 2022
 
+    folder_path = "inputs/entsoe_ror/"
     # read all the folders in the path. Each folder corresponds to a country
     country_list = [folder for folder in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, folder))]
 
