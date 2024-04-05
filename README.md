@@ -66,7 +66,7 @@ On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download run
 - Download the full year at Export Data>Actual Generation per Production Type (Year,CSV).
 The file name should have this format: "Actual Generation per Production Type_201501010000-201601010000.csv".
 
-In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create one folder per country, named with the country code, e.g. "AT".
+In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create one folder per country, named with the country code, e.g. `AT`.
 Save the csv file downloaded from ENTSO-e into the folder of the corresponding country.
 
 
