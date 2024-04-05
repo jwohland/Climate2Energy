@@ -19,7 +19,7 @@ def preprocess_cesm_runoff(ds):
     Returns a dataset of runoff for Europe with daily values
     :param ds: 
     """
-    ds = zero_mean_longitudes(select_Europe(ds)) # selecting area and settin long to -180,180
+    ds = select_Europe(zero_mean_longitudes(ds)) # selecting area and settin long to -180,180
     ds = ds.resample(time="D").sum() #resample to daily values
     ds = ds.rename({"QRUNOFF":"runoff"})["runoff"].to_dataset() #renaming and selecting only runoff
     return ds
@@ -58,7 +58,7 @@ def open_runoff(year, end_year=np.nan):
     # opening all wanted files
     files = [f"{path}b.e212.BHISTcmip6.f09_g17.1500.clm2.h6.{y}-01-01-03600.nc" for y in time_range]
     runoff = xr.open_mfdataset(files,preprocess=preprocess_cesm_runoff)
-    return runoff
+    return runoff.load()
 
 def open_era():
     """
@@ -198,7 +198,6 @@ def lin_transfer_no_b(runoff_cesm2, runoff_era,inflow_entsoe):
 
 def lin_transfer_all_countries(runoff_cesm2, runoff_era, inflow_entsoe,qu_75=np.nan):
     """ 
-    TODO: update description
     Applies a linear transfer function across countries. If qu_75 is nan, it applies f(x) = ax + b for all values. Else, qu_75 is the value at which you differentiate: f(x) = ax for runoff < qu_75 (normal values), and f(x) = ax + b for runoff > qu_75 (spillover)
     
     :param runoff_cesm: runoff to be transferred to generation
@@ -258,7 +257,7 @@ def hydro_conversion():
     print("Open and bias correct CESM2 runoff")
     runoff = open_runoff(year) # you can pass end_year to it to open several years in row
     # Bias correction
-    #runoff = bias_correct_dataset(runoff, "runoff").to_dataset("runoff")  TODO: fix bug
+    runoff = bias_correct_dataset(runoff, "runoff").to_dataset(name="runoff")  
     
     # === ERA5 runoff (2017-2022) === 
     print("Open ERA5 runoff")
