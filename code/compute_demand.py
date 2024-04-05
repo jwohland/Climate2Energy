@@ -31,7 +31,7 @@ def open_xarray_demandninja(year, bc_realization, scenario, realization):
 
     ds_atm = xr.open_dataset(
         get_input_filename(scenario, realization, year),
-        chunks={"lat": 10, "lon": 10, "time": 3000},
+        chunks={"lat": 30, "lon": 30, "time": 3000},
     )
     ds_atm = select_Europe(zero_mean_longitudes(ds_atm[["U10", "QREFHT"]]))
     # Correct units so that they match with demandninja
