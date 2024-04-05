@@ -46,8 +46,38 @@ def open_era():
     return era5
 
 def open_entsoe_ror():
-    # TODO: write up how to open entso e data
-    return None
+    
+    year_0 = 2017
+    year_N = 2022
+
+    folder_path = "Data/Transparency/"
+    # read all the folders in the path. Each folder corresponds to a country
+    country_list = [folder for folder in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, folder))]
+
+    years = range(year_0, year_N+1)
+
+    ds_ror =[]
+
+    for country in country_list:
+        ds_time = []
+        for year in years:
+            # Load data
+            df_ror_full = pd.read_csv(folder_path+country+'/Actual Generation per Production Type_'+str(year)+'01010000-'+str(year+1)+'01010000.csv')
+
+            # Convert date to datetime and delta_time (the MTU column has this format:"01.01.2022 00:00 - 01.01.2022 01:00 (CET/CEST)")
+            df_ror_full['time'] = df_ror_full['MTU'].apply(lambda x: datetime.datetime(year=int(x[6:10]), month=int(x[3:5]), day=int(x[0:2])))
+            df_ror_full['delta_time'] = df_ror_full['MTU'].apply(lambda x: (datetime.datetime.strptime(x.split(" - ")[1].split(" ")[0] +' '+x.split(" - ")[1].split(" ")[1], "%d.%m.%Y %H:%M") - datetime.datetime.strptime(x.split(" - ")[0], "%d.%m.%Y %H:%M")).total_seconds() / 3600)
+
+            # Calculate GWh per each time step
+            df_ror_full['ror_GWh'] = df_ror_full['Hydro Run-of-river and poundage  - Actual Aggregated [MW]']*df_ror_full['delta_time']/1000
+
+            # Group ror production by date
+            ds_time.append(df_ror_full[['ror_GWh','time']].groupby('time').sum().to_xarray())
+        ds_ror.append(xr.concat(ds_time, dim='time'))
+    ds_ror = xr.concat(ds_ror, dim='country') 
+    ds_ror['country'] = country_list
+
+    return ds_ror
 
 def open_entsoe_reservoir():
     # TODO: write up how to open entso e data
