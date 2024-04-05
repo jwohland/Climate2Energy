@@ -1,8 +1,5 @@
-from bias_correction_methods import bias_correct_dataset
-from country_average import country_means, get_country_list
-from utils import store_as_pandas_dataframe, zero_mean_longitudes, select_Europe, create_directories
+from utils import zero_mean_longitudes, select_Europe
 import glob
-import sys
 import subprocess
 import xarray as xr
 import pandas as pd
@@ -22,6 +19,7 @@ def preprocess_cesm_runoff(ds):
     ds = select_Europe(zero_mean_longitudes(ds)) # selecting area and settin long to -180,180
     ds = ds.resample(time="D").sum() #resample to daily values
     ds = ds.rename({"QRUNOFF":"runoff"})["runoff"].to_dataset() #renaming and selecting only runoff
+    ds = ds*3600 # to get output in mm/d
     return ds
 
 def quantile_75(ds):
@@ -57,12 +55,12 @@ def open_runoff(year, end_year=np.nan):
         time_range = [year]
     # opening all wanted files
     files = [f"{path}b.e212.BHISTcmip6.f09_g17.1500.clm2.h6.{y}-01-01-03600.nc" for y in time_range]
-    runoff = xr.open_mfdataset(files,preprocess=preprocess_cesm_runoff)
+    runoff = xr.open_mfdataset(files,preprocess=preprocess_cesm_runoff,combine="nested")
     return runoff.load()
 
 def open_era():
     """
-    Opens ERA5 runoff for 2017-2022, to use for the transfer function between generation and runoff.
+    Opens ERA5 runoff for 2017-2022, to use for the transfer function between inflow/ror and runoff.
 
     If the file doesn't exist, the function executes a bash script that creates the necessary file
     """
@@ -71,10 +69,10 @@ def open_era():
     if file == []:
         subprocess.run(["bash", f"preprocess/preprocess_runoff_ERA5_for_transfer.sh"])
         file = glob.glob("../output/runoff_ERA5_2017_2022.nc")
-    era5 = xr.open_dataset(file[0])
+    era5 = xr.open_dataset(file[0]).resample(time="D").sum() # daily values
     return era5
 
-def open_entsoe_ror():
+def open_entsoe(tech):
     year_0 = 2017
     year_N = 2022
 
@@ -107,16 +105,10 @@ def open_entsoe_ror():
 
     return ds_ror
 
-def open_entsoe_reservoir():
-    # TODO: write up how to open entso e data
-    return None
-
-def weighted_aggregation_ror(ds_runoff):
+def weighted_aggregation(ds_runoff,tech):
     """
     Aggregates the runoff data to country level, using the JRC dataset as a reference for the weighting coefficients.
     """
-    year_0 = 2017
-    year_N = 2022
 
     # Create a dataset with the normalized installed capacity of ror power plants per country
     lat = ds_runoff.lat.values
@@ -158,76 +150,120 @@ def weighted_aggregation_ror(ds_runoff):
     # Calculate the runoff per country
     ds_w = []
     for country in country_list:
-        ds = (ds_C_ror.C_ror.sel(country=country) * ds_runoff.runoff).sum(dim=['lat','lon'])
+        ds = (ds_C_ror.C_ror.sel(country=country) * ds_runoff.runoff).sum(('lat','lon'))
         ds_w.append(ds)
     ds_w = xr.concat(ds_w, dim='country')
     ds_w = ds_w.to_dataset(name='runoff')
 
     return ds_w
 
-def weighted_aggregation_reservoir(ds):
-    # TODO: write up weighted average code
-    return ds.mean(("lat","lon"))
-
-def lin_transfer(runoff_cesm2, runoff_era,inflow_entsoe):
+def lin_transfer(runoff_cesm2, calibration,tech):
     """ 
-    Creates a linear transfer function between PECD generation and ERA5 runoff as f(x) = ax + b.
+    Creates a linear transfer function between entsoe inflow/ror and ERA5 runoff as f(x) = ax + b.
 
-    Applies this function to CESM2 runoff, to get its inflow.
+    Applies this function to CESM2 runoff, to get its inflow/ror.
     
-    :param runoff_cesm: runoff to be transferred to generation
-    :param runoff_era: runoff input to create linear transfer function
-    :param inflow_entsoe: inflow input to create linear transfer function
+    :param runoff_cesm: runoff to be transferred to inflow/ror
+    ::param calibration: ds including era5 runoff and entsoe inflow/ror to create linear transfer function
+    :param tech:  string
     """
-    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(runoff_era,inflow_entsoe) #TODO: make sure it works for Nans (ignore them)
+    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(calibration.runoff,calibration[f"{tech}_GWh"]) #TODO: make sure it works for Nans (ignore them)
     return slope*runoff_cesm2 + intercept
 
-def lin_transfer_no_b(runoff_cesm2, runoff_era,inflow_entsoe):
+def lin_transfer_no_b(runoff_cesm2, calibration,tech):
     """ 
-    Creates a linear transfer function between PECD generation and ERA5 runoff as f(x) = ax (no b).
+    Creates a linear transfer function between ENTSO-e inflow/ror and ERA5 runoff as f(x) = ax (no b).
 
-    Applies this function to CESM2 runoff, to get its inflow.
+    Applies this function to CESM2 runoff, to get its inflow/ror.
     
-    :param runoff_cesm: runoff to be transferred to generation
-    :param runoff_era: runoff input to create linear transfer function
-    :param inflow_entsoe: inflow input to create linear transfer function
+    :param runoff_cesm: runoff to be transferred to inflow/ror
+    :param calibration: ds including era5 runoff and entsoe inflow/ror to create linear transfer function
+    :param tech:  string
     """
-    model = sm.OLS(inflow_entsoe,runoff_era)
+    model = sm.OLS(calibration[f"{tech}_GWh"].values,calibration.runoff.values)
     slope = model.fit().params #TODO: make sure it works for Nans (ignore them)
     return slope*runoff_cesm2
 
-def lin_transfer_all_countries(runoff_cesm2, runoff_era, inflow_entsoe,qu_75=np.nan):
+def lin_transfer_all_countries(runoff_cesm2, calibration,tech,qu_75=np.nan):
     """ 
     Applies a linear transfer function across countries. If qu_75 is nan, it applies f(x) = ax + b for all values. Else, qu_75 is the value at which you differentiate: f(x) = ax for runoff < qu_75 (normal values), and f(x) = ax + b for runoff > qu_75 (spillover)
     
-    :param runoff_cesm: runoff to be transferred to generation
-    :param runoff_era: runoff input to create linear transfer function
-    :param inflow_entsoe: inflow input to create linear transfer function
+    :param runoff_cesm: runoff to be transferred to inflow/ror
+    :param calibration: ds including era5 runoff and entsoe inflow/ror to create linear transfer function
+    :param tech:  string
     :kwarg qu_75: if not nan, 75th percentile of CESM2 runoff values, to separate between linear transfer types
     """
-    runoffs_inflow = [runoff_cesm2, runoff_era, inflow_entsoe]
-    inflows = []
-    for country in runoff_cesm2.countries:
+    transferred = []
+    for country in runoff_cesm2.country:
+        calib_country = calibration.sel(country=country).dropna(dim="time") #linear regressions can't handle nans
+        runoff_country = runoff_cesm2.sel(country=country)
         qu_75_country = qu_75.sel(country=country)
         if np.isnan(qu_75_country) == False: #linear transfer differentiated based on 75th percentile value 
+            # loop over the different statements (above or under 75th percentile) to get the two specialized datasets
+            differenciate = {"sub_q":runoff_country < qu_75_country, "sup_q":runoff_country > qu_75_country}
+            ds_cond_on_q = {}
+            for statement in differenciate: 
+                runoff_cond = runoff_country.where(differenciate[statement],drop=True)
+                calib_cond = calib_country.where(differenciate[statement],drop=True)
+                ds_cond_on_q[statement] = [runoff_cond, calib_cond]
             # f(x) = ax for values under qu_75 
-            args_for_lin_transfer_no_b = []
-            for ds in runoffs_inflow:
-                args_for_lin_transfer_no_b.append(ds.where(ds < qu_75_country,drop=True))
-            # apply function over all grid cells
-            cesm2_inflow_no_b = lin_transfer_no_b(*args_for_lins_transfer)
+            cesm2_transferred_no_b = lin_transfer_no_b(*ds_cond_on_q["sub_q"],tech)
             # f(x) = ax + b for values above qu_75
-            args_for_lin_transfer = []
-            for ds in runoffs_inflow:
-                args_for_lin_transfer.append(ds.where(ds > qu_75_country,drop=True))
+            cesm2_transferred_with_b = lin_transfer(*ds_cond_on_q["sup_q"],tech)
+            # concatenat the two
+            cesm2_transferred = xr.concat([cesm2_transferred_no_b,cesm2_transferred_with_b],dim="time").sortby("time")
         else: # no differentiating based on 75th percentile
-            args_for_lin_transfer = runoffs_inflow
-        # f(x) = ax + b                                     
-        cesm2_inflow = lin_transfer(*args_for_lin_transfer)
-        if np.isnan(qu_75) == False:
-            cesm2_inflow = xr.concat([cesm2_inflow_no_b,cesm2_inflow],dim="time").sortby("time")
-        inflows.append(cesm2_inflow)
-    inflows = xr.concat(inflows,dim="country")
-    inflows["country"] = list(runoff_cesm2.countries)
+            # f(x) = ax + b                                     
+            cesm2_transferred = lin_transfer(runoff_country,calib_country,tech)
+        transferred.append(cesm2_transferred)
         
-    return inflows
+    transferred = xr.concat(transferred,dim="country")
+    transferred["country"] = list(runoff_cesm2.country)
+    return transferred
+
+def read_annual_prod(countries, tech):
+    """
+    Reads the annual production of hydropower for each country of interest, for the hydropower technology specified
+    :param countries: list of country codes
+    :param tech: string
+    """
+    prod_per_country = np.zeros(countries)
+    delim = [";","\t",","] # different years have different delimiters for their .csv file
+    time_range = range(2021,2024) #time range considered
+    for j,year in enumerate(time_range):
+        annual_prod = pd.read_csv(f"../inputs/entsoe/monthly_domestic_values_{year}.csv",delimiter=delim[j])
+        for i,country in enumerate(countries):
+            annual_prod = annual_prod[annual_prod['Country'] == countries[country]] #choosing country
+            if tech == "ror":
+                # select technology and sum over months
+                annual_prod = annual_prod[annual_prod["Category"] == "Hydro Run-of-river and poundage"]["ProvidedValue"].sum()
+                prod_per_country[i] += annual_prod #adding annual sum for each year
+            elif tech == "inflow":
+                for sub_tech in["Hydro Water Reservoir", "Hydro Pumped Storage"]:
+                    # select sub-technology and sum over months
+                    annual_prod_sub_tech = annual_prod[annual_prod["Category"] == sub_tech]["ProvidedValue"].sum()
+                    prod_per_country[i] += annual_prod_sub_tech # adding annual sum for each year, for both subtechnologies together
+                    
+    prod_per_country=prod_per_country/len(time_range) #average to annual mean production
+    #create output xarray dataarray
+    prod_per_country = xr.DataArray(prod_per_country,dims=["country"],coords ={"country":list(countries)})
+    return prod_per_country
+
+def scale_up(ds,tech):
+    """
+    Scales output to fit average annual hydropower production values for each country
+    :param ds: DataArray of transformed runoff-to-hydro, per country
+    :param tech: string
+    """
+    prod_per_country = read_annual_prod(ds.country, tech)
+    scaled_output = []
+    for country in ds.country:
+        ann_prod = prod_per_country.sel(country=country)
+        day_by_day = ds.sel(country=country)
+        nb_years = len(day_by_day.groupby("time.year").sum().year) #number of years in total
+        ann_prod_non_scaled = day_by_day.sum()/nb_years #average yearly values for this dataset
+        scaled = day_by_day * (ann_prod.values/ann_prod_non_scaled.values) 
+        scaled_output.append(scaled)
+    scaled_output = xr.concat(scaled_output,dim="country")
+    scaled_output = scaled_output["country"] = list(ds.country)
+    return scaled_output
