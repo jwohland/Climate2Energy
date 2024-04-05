@@ -158,7 +158,7 @@ def weighted_aggregation_ror(ds_runoff):
     # Calculate the runoff per country
     ds_w = []
     for country in country_list:
-        ds = (ds_C_ror.C_ror.sel(country=country) * ds_runoff.runoff.sel(time=slice(np.datetime64(str(year_0)+'-01-01'),np.datetime64(str(year_N)+'-12-31')))).sum(dim=['lat','lon'])
+        ds = (ds_C_ror.C_ror.sel(country=country) * ds_runoff.runoff).sum(dim=['lat','lon'])
         ds_w.append(ds)
     ds_w = xr.concat(ds_w, dim='country')
     ds_w = ds_w.to_dataset(name='runoff')
@@ -231,95 +231,3 @@ def lin_transfer_all_countries(runoff_cesm2, runoff_era, inflow_entsoe,qu_75=np.
     inflows["country"] = list(runoff_cesm2.countries)
         
     return inflows
-
-
-
-def hydro_conversion():
-    """
-    Execute conversion from CESM2 output to hydropower over a chosen year.
-
-    :return:
-    """
-    try:
-        year = str(sys.argv[1])  # can be any year between 1990 and 2010
-    except IndexError:
-        year = "2010"
-    print(year)
-    
-    # create necessary directories (for pecd and entso-e data)
-    create_directories()
-    
-    # =====================================================
-    # === Step 1: Open, bias correct and aggregate data ===
-    # =====================================================
-    
-    # === CESM2 runoff === 
-    print("Open and bias correct CESM2 runoff")
-    runoff = open_runoff(year) # you can pass end_year to it to open several years in row
-    # Bias correction
-    runoff = bias_correct_dataset(runoff, "runoff").to_dataset(name="runoff")  
-    
-    # === ERA5 runoff (2017-2022) === 
-    print("Open ERA5 runoff")
-    runoff_era5 = open_era()
-
-    # === ENTSO-E inflow (2017-2022) ===
-    print("Open ENTSO-e inflow data")
-    inflow_entsoe = open_entsoe_ror() # conversion data set for inflows 
-    
-    # === Smart aggregation over country for CESM2 and ERA5 ===
-    print("Aggregate runoff over countries")
-    runoff = weighted_aggregation_ror(runoff)
-    runoff_era5 = weighted_aggregation_ror(runoff_era5)
-    
-    print("All files opened and preprocessed. Conversion starting")
-    
-    # ================================================
-    # === Step 2: Convert to hydropower generation ===
-    # ================================================
-    # TODO: concat era5 entsoe into one xarray
-    # === Run-of-river ===
-    # get 75th percentile of CESM2 runoff, for each country
-    qu_75 = get_qu_75(runoff)
-    # Treat seasons separately
-    season_transfer = []
-    for season in runoff.groupby("time.season"):
-        # get seasonal era5 and entsoe values too
-        runoff_era5_season = dict(runoff_era5.groupby("time.season"))[season[0]]
-        inflow_entsoe_season = dict(inflow_entsoe.groupby("time.season"))[season[0]]
-        # apply by season over all grid cells
-        season_transfer.append(lin_transfer_all_countries(season[1].runoff,
-                                                          runoff_era5_season.runoff,
-                                                          inflow_entsoe_season.inflow,
-                                                          qu_75 = qu_75
-                                                         ).to_dataset(name="inflow_cesm2")
-                              )
-    ror = xr.concat(season_transfer,dim="time").sortby("time") # add seasons together and sort chunks by time
-    # Rolling mean
-    ror = ror.rolling(time=7,center=True).mean() #TODO rolling mean before
-    # TODO: change implementation to fit your needs
-
-    # TODO: Scale up
-    
-    # === Reservoir/pumped hydro ===
-    # TODO: implement your setup (potentially streamline with r-o-r setup
-    reservoir = xr.DataArray()
-    # TODO: scale up
-    # Save both hydro types in one dictionary
-    output = {
-        "ror":ror.inflow_cesm2,
-        "inflow":reservoir
-    }
-
-    print("Conversion done. Now saving")
-    # ===========================
-    # === Step 4: Save output ===
-    # ===========================
-    for i,type in enumerate(output):
-        store_as_pandas_dataframe(output[type], f"hydro_{type}_{year}")
-    
-    return None
-
-
-if __name__ == "__main__":
-    hydro_conversion()
