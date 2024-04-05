@@ -91,15 +91,15 @@ def open_pecd_generation():
 
 def open_era():
     """
-    Opens ERA5 runoff for 1982-2019, to use for the transfer function between generation and runoff.
+    Opens ERA5 runoff for 2017-2022, to use for the transfer function between generation and runoff.
 
     If the file doesn't exist, the function executes a bash script that creates the necessary file
     """
-    file = glob.glob("../output/runoff_ERA5_1982-2019.nc")
+    file = glob.glob("../output/runoff_ERA5_2017_2022.nc")
     # TODO: avoid running this twice (also done for bias correction, but not exactly the same time frame)
     if file == []:
         subprocess.run(["bash", f"preprocess/preprocess_runoff_ERA5_for_transfer.sh"])
-        file = glob.glob("../output/runoff_ERA5_1982-2019.nc")
+        file = glob.glob("../output/runoff_ERA5_2017_2022.nc")
     era5 = xr.open_dataset(file[0])
     # remove leap days
     era5 = era5.sel(time=~((era5.time.dt.month == 2) & (era5.time.dt.day == 29)))
@@ -173,10 +173,10 @@ def hydro_conversion():
     # Bias correction
     #runoff = bias_correct_dataset(runoff, "runoff").to_dataset("runoff")  TODO: fix bug
     
-    # === ERA5 runoff (1982-2019) === 
-    runoff_era5 = open_era().sel(time=slice("1982","2017"))
+    # === ERA5 runoff (2017-2022) === 
+    runoff_era5 = open_era()
     
-    # === Smart aggregation over country ===
+    # === Smart aggregation over country for CESM2 and ERA5 ===
     runoff = weighted_aggregation(runoff)
     runoff_era5 = weighted_aggregation(runoff_era5)
     
@@ -184,7 +184,7 @@ def hydro_conversion():
     # conversion data set for run-or-river, already 1 value per country
     generation_pecd = open_pecd_generation()
     
-    # ENTSO-E generation (2016-2019)
+    # === ENTSO-E generation (2016-2019) ===
     entso_e = open_entso_e_generation() # conversion data set for inflows 
     
     print("All files opened. Conversion starting")
@@ -209,7 +209,7 @@ def hydro_conversion():
     ror = ror.rolling(time=7,center=True).mean()
     # TODO: change implementation to fit your needs
     
-    # === Reservoir/pumped hydro
+    # === Reservoir/pumped hydro ===
     # TODO: implement your setup (potentially streamline with r-o-r setup
     inflow = xr.DataArray()
     # Save both hydro types in one dictionary
