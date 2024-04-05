@@ -50,12 +50,11 @@ def pick_convert_demandninja(ds, ilat, ilon):
     df = ds_tmp.to_dataframe()
     df = df.rename(
         columns={
-            "FSDS": "radiation_global_horizontal",
-            "TREFHT": "temperature",
+            "global_horizontal": "radiation_global_horizontal",
             "U10": "wind_speed_2m",
             "QREFHT": "humidity",
         }
-    )
+    )  # temperature already has the correct name
     df.index = df.index.to_datetimeindex(
         unsafe=True
     )  # ninja needs time in datetimeindex format, unsafe is ok because non-leap year have been manually checked
