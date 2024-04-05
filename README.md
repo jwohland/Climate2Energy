@@ -63,8 +63,9 @@ On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download run
 - Go to Generation>Actual generation per production type
 - Select "Country" and in "Area" select the desired country.
 - In "Production Type" select only "Hydro Run-of-river and poundage".
-- Download the full year at Export Data>Actual Generation per Production Type (Year,CSV)
-The file name should have this format: "Actual Generation per Production Type_201501010000-201601010000.csv"
+- Download the full year at Export Data>Actual Generation per Production Type (Year,CSV).
+The file name should have this format: "Actual Generation per Production Type_201501010000-201601010000.csv".
+
 In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create one folder per country, named with the country code, e.g. "AT".
 Save the csv file downloaded from ENTSO-e into the folder of the corresponding country.
 
