@@ -1,0 +1,23 @@
+name: hydro
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - xarray
+  - pandas
+  - ipykernel
+  - ca-certificates
+  - openssl
+  - netcdf4
+  - scipy
+  - matplotlib
+  - certifi
+  - seaborn
+  - salem
+  - shapely
+  - geopandas
+  - rasterio
+  - dask
+  - openpyxl
+  - bias_correction
