@@ -59,7 +59,14 @@ Save the file into the `inputs` folder.
 This file contains the location and the installed capacity (nominal power of the turbine) of hydropower plants (run-of-river, reservoir, pumped-hydro) in Europe.
 
 ### Download run-of-river generation from ENTSO-e Transparency platform
-
+On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download run-of-river generation per each year per each country:
+- Go to Generation>Actual generation per production type
+- Select "Country" and in "Area" select the desired country.
+- In "Production Type" select only "Hydro Run-of-river and poundage".
+- Download the full year at Export Data>Actual Generation per Production Type (Year,CSV)
+The file name should have this format: "Actual Generation per Production Type_201501010000-201601010000.csv"
+In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create one folder per country, named with the country code, e.g. "AT".
+Save the csv file downloaded from ENTSO-e into the folder of the corresponding country.
 
 
 ### Code information
