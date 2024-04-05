@@ -109,7 +109,7 @@ def weighted_aggregation_ror(ds_runoff):
     # Create the dataset
     ds_C_ror = xr.Dataset(
         data_vars=dict(
-            C_ror=(["lat", "lon", "country"],  np.zeros((48,53,30))),
+            C_ror=(["lat", "lon", "country"],  np.zeros((len(lat),len(lon),len(country_list)))),
         ),
         coords=dict(
             country=country_list,
@@ -121,7 +121,7 @@ def weighted_aggregation_ror(ds_runoff):
 
     # Fill the dataset  
     for country_code in country_list:
-        C_ror = np.zeros((48,53))
+        C_ror = np.zeros((len(lat),len(lon)))
         for ii in range(len(lon)): 
             for jj in range(len(lat)):
                 C_ror[jj,ii] = df_jrc["installed_capacity_MW"][(df_jrc["type"]=='HROR') & (df_jrc["country_code"]==country_code) & (lon_edge[ii]<df_jrc["lon"]) & (df_jrc["lon"]<lon_edge[ii+1]) & (lat_edge[jj]<df_jrc["lat"]) & (df_jrc["lat"]<lat_edge[jj+1])].sum()
