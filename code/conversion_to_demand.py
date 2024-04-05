@@ -3,7 +3,6 @@ from utils import *
 import pandas as pd
 import demand_ninja  # todo currently is done in seperate environment. Can we integrate it?
 import subprocess
-import numpy as np
 
 
 def open_xarray_demandninja(year=1990):
