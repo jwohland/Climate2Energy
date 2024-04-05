@@ -84,9 +84,59 @@ def open_entsoe_reservoir():
     # TODO: write up how to open entso e data
     return None
 
-def weighted_aggregation_ror(ds):
-    # TODO: write up weighted average code
-    return ds.mean(("lat","lon"))
+def weighted_aggregation_ror(ds_runoff):
+    """
+    Aggregates the runoff data to country level, using the JRC dataset as a reference for the weighting coefficients.
+    """
+    year_0 = 2017
+    year_N = 2022
+
+    # Create a dataset with the normalized installed capacity of ror power plants per country
+    lat = ds_runoff.lat.values
+    lon = ds_runoff.lon.values
+    lat_edge = (lat[:-1]+lat[1:])/2
+    lon_edge = (lon[:-1] + lon[1:])/2
+    lon_edge = np.insert(lon_edge,0,-1000)
+    lon_edge = np.append(lon_edge,1000)
+    lat_edge = np.insert(lat_edge,0,0)
+    lat_edge = np.append(lat_edge,1000)
+
+    # Load the JRC dataset
+    file_path = "inputs/jrc-hydro-power-plant-database.csv"
+    df_jrc = pd.read_csv(file_path)
+    country_list=df_jrc['country_code'].unique().tolist()
+
+    # Create the dataset
+    ds_C_ror = xr.Dataset(
+        data_vars=dict(
+            C_ror=(["lat", "lon", "country"],  np.zeros((48,53,30))),
+        ),
+        coords=dict(
+            country=country_list,
+            lat=lat,
+            lon=lon
+        ),
+        attrs=dict(description="Installed ror capacity (normalized per country)"),
+    )
+
+    # Fill the dataset  
+    for country_code in country_list:
+        C_ror = np.zeros((48,53))
+        for ii in range(len(lon)): 
+            for jj in range(len(lat)):
+                C_ror[jj,ii] = df_jrc["installed_capacity_MW"][(df_jrc["type"]=='HROR') & (df_jrc["country_code"]==country_code) & (lon_edge[ii]<df_jrc["lon"]) & (df_jrc["lon"]<lon_edge[ii+1]) & (lat_edge[jj]<df_jrc["lat"]) & (df_jrc["lat"]<lat_edge[jj+1])].sum()
+
+        ds_C_ror.C_ror.loc[{'country':country_code}] = C_ror[:,:] / df_jrc["installed_capacity_MW"][(df_jrc["type"]=='HROR') & (df_jrc["country_code"]==country_code)].sum()
+        
+    # Calculate the runoff per country
+    ds_w = []
+    for country in country_list:
+        ds = (ds_C_ror.C_ror.sel(country=country) * ds_runoff.runoff.sel(time=slice(str(year_0)+"-01-01T11:30:00.000000000",str(year_N)+"-12-31T11:30:00.000000000"))).sum(dim=['lat','lon'])
+        ds_w.append(ds)
+    ds_w = xr.concat(ds_w, dim='country')
+    ds_w = ds_w.to_dataset(name='runoff')
+
+    return ds_w
 
 def weighted_aggregation_reservoir(ds):
     # TODO: write up weighted average code
