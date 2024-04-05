@@ -10,6 +10,7 @@ import numpy as np
 import scipy
 import os
 import statsmodels.api as sm
+import datetime as datetime
 
 path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/lnd/hist/"
 
@@ -65,21 +66,19 @@ def open_era():
 
     If the file doesn't exist, the function executes a bash script that creates the necessary file
     """
+    # ERA5 runoff for the ENTSO-e time range
     file = glob.glob("../output/runoff_ERA5_2017_2022.nc")
-    # TODO: avoid running this twice (also done for bias correction, but not exactly the same time frame)
     if file == []:
         subprocess.run(["bash", f"preprocess/preprocess_runoff_ERA5_for_transfer.sh"])
         file = glob.glob("../output/runoff_ERA5_2017_2022.nc")
     era5 = xr.open_dataset(file[0])
-    # remove leap days TODO: remove this
-    era5 = era5.sel(time=~((era5.time.dt.month == 2) & (era5.time.dt.day == 29)))
     return era5
 
 def open_entsoe_ror():
     year_0 = 2017
     year_N = 2022
 
-    folder_path = "inputs/entsoe_ror/"
+    folder_path = "../inputs/entsoe_ror/"
     # read all the folders in the path. Each folder corresponds to a country
     country_list = [folder for folder in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, folder))]
 
@@ -130,7 +129,7 @@ def weighted_aggregation_ror(ds_runoff):
     lat_edge = np.append(lat_edge,1000)
 
     # Load the JRC dataset
-    file_path = "inputs/jrc-hydro-power-plant-database.csv"
+    file_path = "../inputs/jrc-hydro-power-plant-database.csv"
     df_jrc = pd.read_csv(file_path)
     country_list=df_jrc['country_code'].unique().tolist()
 
@@ -300,10 +299,13 @@ def hydro_conversion():
     # Rolling mean
     ror = ror.rolling(time=7,center=True).mean() #TODO rolling mean before
     # TODO: change implementation to fit your needs
+
+    # TODO: Scale up
     
     # === Reservoir/pumped hydro ===
     # TODO: implement your setup (potentially streamline with r-o-r setup
     reservoir = xr.DataArray()
+    # TODO: scale up
     # Save both hydro types in one dictionary
     output = {
         "ror":ror.inflow_cesm2,
