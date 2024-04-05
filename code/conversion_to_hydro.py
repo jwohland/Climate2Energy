@@ -158,7 +158,7 @@ def weighted_aggregation_ror(ds_runoff):
     # Calculate the runoff per country
     ds_w = []
     for country in country_list:
-        ds = (ds_C_ror.C_ror.sel(country=country) * ds_runoff.runoff.sel(time=slice(np.datetime64(str(year_0)+'-01-01'),np.datetime64(str(year_0)+'-12-31')))).sum(dim=['lat','lon'])
+        ds = (ds_C_ror.C_ror.sel(country=country) * ds_runoff.runoff.sel(time=slice(np.datetime64(str(year_0)+'-01-01'),np.datetime64(str(year_N)+'-12-31')))).sum(dim=['lat','lon'])
         ds_w.append(ds)
     ds_w = xr.concat(ds_w, dim='country')
     ds_w = ds_w.to_dataset(name='runoff')
