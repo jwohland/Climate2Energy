@@ -37,11 +37,9 @@ def open_xarray_demandninja(year, bc_realization, scenario, realization):
     # Correct units so that they match with demandninja
     ds_atm["QREFHT"] *= 1000  # CESM2 gives kg/kg but demandninja wants g/kg
     ds_atm["U10"] *= (2 / 10) ** 0.14  # power law conversion from 10m to 2m
-    ds_atm["FSDS"] = ds_radiation
-    ds_atm[
-        "TREFHT"
-    ] = ds_temp  # todo check that this one is already in C and does not need conversion
-    return ds_atm
+    ds_temp["time"] = ds_atm.time  # make sure same format of calendar used
+    ds_radiation["time"] = ds_atm.time
+    return xr.merge([ds_atm, ds_temp, ds_radiation])
 
 
 def pick_convert_demandninja(ds, ilat, ilon):
