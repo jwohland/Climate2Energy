@@ -4,7 +4,7 @@ import warnings
 from os import makedirs
 import dask
 
-dask.config.set({"array.slicing.split_large_chunks": True})
+dask.config.set({"array.slicing.split_large_chunks": False})
 
 # Dictionary that connects scenarios (historical, SSP370, SSP245), realization names (A,B,C) and identifiers used in CESM2 output (4 digit numbers, e.g., "1000")
 CESM2_REALIZATION_DICT = {
@@ -109,7 +109,7 @@ def open_wind_solar(year, scenario, realization, test_data=False):
             - global horizontal radiation
             - temperature
     """
-    chunks = {"lat": 10, "lon": 10, "lev": 5, "ilev": 5, "time": 1000}
+    chunks = {"lat": 30, "lon": 30, "lev": 5, "ilev": 5, "time": 3000}
     # Wind
     ds_atm = select_Europe(
         zero_mean_longitudes(
