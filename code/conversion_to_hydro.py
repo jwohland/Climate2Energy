@@ -6,28 +6,58 @@ import sys
 import subprocess
 import xarray as xr
 import pandas as pd
+import numpy as np
 import scipy
-from sklearn.metrics import mean_squared_error
 import os
+import statsmodels.api as sm
+import datetime as datetime
 
 path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/lnd/hist/"
 
-def open_runoff(year): #TODO: open for all years
+def preprocess_cesm_runoff(ds):
     """
-    Returns an xarray data set of runoff in Europe for selected year. 
+    Returns a dataset of runoff for Europe with daily values
+    :param ds: 
+    """
+    ds = zero_mean_longitudes(select_Europe(ds)) # selecting area and settin long to -180,180
+    ds = ds.resample(time="D").sum() #resample to daily values
+    ds = ds.rename({"QRUNOFF":"runoff"})["runoff"].to_dataset() #renaming and selecting only runoff
+    return ds
+
+def quantile_75(ds):
+    """
+    returns the value of the 75th percentile of dataset ds
+    :param ds: 
+    """
+    return np.nanquantile(ds,0.75)
+    
+def get_qu_75(ds):
+    """
+    returns the value of the 75th percentile of dataset ds for all countries
+    :param ds: 
+    """
+    qu = xr.apply_ufunc(quantile_75,ds.runoff,
+            vectorize=True,
+            input_core_dims=[["time"]],
+            exclude_dims=set(("time",))    
+            )
+    return qu
+
+def open_runoff(year, end_year=np.nan):
+    """
+    Opens and preprocesses runoff data (see function preprocess_cesm_runoff) for a certain year. If end year is passed as an int, it opens all years between year and end_year (included)
     :param year: int
+    :kwarg end_year: int
     """
     year =int(year) #make sure to have year in int
-    runoffs = []
-    # opening the wanted year + one year before and after, so that even after rolling means we have a full calendar year
-    for y in [year-1,year,year+1]:
-        ds = xr.open_dataset(f"{path}b.e212.BHISTcmip6.f09_g17.1500.clm2.h6.{y}-01-01-03600.nc")
-        runoff = ds.rename({"QRUNOFF":"runoff"})["runoff"].to_dataset()
-        runoffs.append(zero_mean_longitudes(select_Europe(runoff)))
-    #  only keeping one month before and after our calendar year
-    runoff = xr.concat(runoffs,dim="time").sel(time=slice(f"{year-1}-12",f"{year+1}-01")) 
-    # aggregate to daily values
-    runoff = runoff.resample(time="D").sum()
+    if np.isnan(end_year) == False: 
+        end_year = int(end_year) #make sure to have year in int
+        time_range = range(year,end_year+1)
+    else:
+        time_range = [year]
+    # opening all wanted files
+    files = [f"{path}b.e212.BHISTcmip6.f09_g17.1500.clm2.h6.{y}-01-01-03600.nc" for y in time_range]
+    runoff = xr.open_mfdataset(files,preprocess=preprocess_cesm_runoff)
     return runoff
 
 def open_era():
@@ -36,22 +66,19 @@ def open_era():
 
     If the file doesn't exist, the function executes a bash script that creates the necessary file
     """
+    # ERA5 runoff for the ENTSO-e time range
     file = glob.glob("../output/runoff_ERA5_2017_2022.nc")
-    # TODO: avoid running this twice (also done for bias correction, but not exactly the same time frame)
     if file == []:
         subprocess.run(["bash", f"preprocess/preprocess_runoff_ERA5_for_transfer.sh"])
         file = glob.glob("../output/runoff_ERA5_2017_2022.nc")
     era5 = xr.open_dataset(file[0])
-    # remove leap days
-    era5 = era5.sel(time=~((era5.time.dt.month == 2) & (era5.time.dt.day == 29)))
     return era5
 
 def open_entsoe_ror():
-    
     year_0 = 2017
     year_N = 2022
 
-    folder_path = "inputs/entsoe_ror/"
+    folder_path = "../inputs/entsoe_ror/"
     # read all the folders in the path. Each folder corresponds to a country
     country_list = [folder for folder in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, folder))]
 
@@ -102,7 +129,7 @@ def weighted_aggregation_ror(ds_runoff):
     lat_edge = np.append(lat_edge,1000)
 
     # Load the JRC dataset
-    file_path = "inputs/jrc-hydro-power-plant-database.csv"
+    file_path = "../inputs/jrc-hydro-power-plant-database.csv"
     df_jrc = pd.read_csv(file_path)
     country_list=df_jrc['country_code'].unique().tolist()
 
@@ -142,38 +169,69 @@ def weighted_aggregation_reservoir(ds):
     # TODO: write up weighted average code
     return ds.mean(("lat","lon"))
 
-def lin_transfer(runoff_cesm2, runoff_era,generation):
+def lin_transfer(runoff_cesm2, runoff_era,inflow_entsoe):
     """ 
-    Creates a linear transfer function between PECD generation and ERA5 runoff.
+    Creates a linear transfer function between PECD generation and ERA5 runoff as f(x) = ax + b.
 
-    Applies this function to CESM2 runoff, to get its generation.
+    Applies this function to CESM2 runoff, to get its inflow.
     
     :param runoff_cesm: runoff to be transferred to generation
     :param runoff_era: runoff input to create linear transfer function
-    :param generation: generation input to create linear transfer function
+    :param inflow_entsoe: inflow input to create linear transfer function
     """
-    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(runoff_era,generation)
+    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(runoff_era,inflow_entsoe) #TODO: make sure it works for Nans (ignore them)
     return slope*runoff_cesm2 + intercept
 
-def lin_transfer_all_countries(runoff_cesm2, runoff_era, generation):
+def lin_transfer_no_b(runoff_cesm2, runoff_era,inflow_entsoe):
     """ 
-    Applies the function lin_transfer across countries.
+    Creates a linear transfer function between PECD generation and ERA5 runoff as f(x) = ax (no b).
+
+    Applies this function to CESM2 runoff, to get its inflow.
     
     :param runoff_cesm: runoff to be transferred to generation
     :param runoff_era: runoff input to create linear transfer function
-    :param generation: generation input to create linear transfer function
+    :param inflow_entsoe: inflow input to create linear transfer function
     """
-    cesm2_generation = xr.apply_ufunc(
-        lin_transfer, 
-        runoff_cesm2, 
-        runoff_era, 
-        generation, 
-        vectorize=True,
-        input_core_dims=[["time"],["time"],["time"]],
-        exclude_dims=set(("time",)),
-        output_core_dims=[["time"]]
-    )
-    return cesm2_generation
+    model = sm.OLS(inflow_entsoe,runoff_era)
+    slope = model.fit().params #TODO: make sure it works for Nans (ignore them)
+    return slope*runoff_cesm2
+
+def lin_transfer_all_countries(runoff_cesm2, runoff_era, inflow_entsoe,qu_75=np.nan):
+    """ 
+    TODO: update description
+    Applies a linear transfer function across countries. If qu_75 is nan, it applies f(x) = ax + b for all values. Else, qu_75 is the value at which you differentiate: f(x) = ax for runoff < qu_75 (normal values), and f(x) = ax + b for runoff > qu_75 (spillover)
+    
+    :param runoff_cesm: runoff to be transferred to generation
+    :param runoff_era: runoff input to create linear transfer function
+    :param inflow_entsoe: inflow input to create linear transfer function
+    :kwarg qu_75: if not nan, 75th percentile of CESM2 runoff values, to separate between linear transfer types
+    """
+    runoffs_inflow = [runoff_cesm2, runoff_era, inflow_entsoe]
+    inflows = []
+    for country in runoff_cesm2.countries:
+        qu_75_country = qu_75.sel(country=country)
+        if np.isnan(qu_75_country) == False: #linear transfer differentiated based on 75th percentile value 
+            # f(x) = ax for values under qu_75 
+            args_for_lin_transfer_no_b = []
+            for ds in runoffs_inflow:
+                args_for_lin_transfer_no_b.append(ds.where(ds < qu_75_country,drop=True))
+            # apply function over all grid cells
+            cesm2_inflow_no_b = lin_transfer_no_b(*args_for_lins_transfer)
+            # f(x) = ax + b for values above qu_75
+            args_for_lin_transfer = []
+            for ds in runoffs_inflow:
+                args_for_lin_transfer.append(ds.where(ds > qu_75_country,drop=True))
+        else: # no differentiating based on 75th percentile
+            args_for_lin_transfer = runoffs_inflow
+        # f(x) = ax + b                                     
+        cesm2_inflow = lin_transfer(*args_for_lin_transfer)
+        if np.isnan(qu_75) == False:
+            cesm2_inflow = xr.concat([cesm2_inflow_no_b,cesm2_inflow],dim="time").sortby("time")
+        inflows.append(cesm2_inflow)
+    inflows = xr.concat(inflows,dim="country")
+    inflows["country"] = list(runoff_cesm2.countries)
+        
+    return inflows
 
 
 
@@ -196,57 +254,65 @@ def hydro_conversion():
     # === Step 1: Open, bias correct and aggregate data ===
     # =====================================================
     
-    hydro = xr.Dataset()
     # === CESM2 runoff === 
-    runoff = open_runoff(year)
+    print("Open and bias correct CESM2 runoff")
+    runoff = open_runoff(year) # you can pass end_year to it to open several years in row
     # Bias correction
     #runoff = bias_correct_dataset(runoff, "runoff").to_dataset("runoff")  TODO: fix bug
     
     # === ERA5 runoff (2017-2022) === 
+    print("Open ERA5 runoff")
     runoff_era5 = open_era()
+
+    # === ENTSO-E inflow (2017-2022) ===
+    print("Open ENTSO-e inflow data")
+    inflow_entsoe = open_entsoe_ror() # conversion data set for inflows 
     
     # === Smart aggregation over country for CESM2 and ERA5 ===
-    runoff = weighted_aggregation(runoff)
-    runoff_era5 = weighted_aggregation(runoff_era5)
+    print("Aggregate runoff over countries")
+    runoff = weighted_aggregation_ror(runoff)
+    runoff_era5 = weighted_aggregation_ror(runoff_era5)
     
-    # === PECD generation (1982-2017) ===
-    # conversion data set for run-or-river, already 1 value per country
-    generation_pecd = open_pecd_generation()
-    
-    # === ENTSO-E generation (2016-2019) ===
-    entso_e = open_entso_e_generation() # conversion data set for inflows 
-    
-    print("All files opened. Conversion starting")
+    print("All files opened and preprocessed. Conversion starting")
     
     # ================================================
     # === Step 2: Convert to hydropower generation ===
     # ================================================
-    
+    # TODO: concat era5 entsoe into one xarray
     # === Run-of-river ===
+    # get 75th percentile of CESM2 runoff, for each country
+    qu_75 = get_qu_75(runoff)
     # Treat seasons separately
     season_transfer = []
     for season in runoff.groupby("time.season"):
+        # get seasonal era5 and entsoe values too
         runoff_era5_season = dict(runoff_era5.groupby("time.season"))[season[0]]
-        generation_pecd_season = dict(generation_pecd.groupby("time.season"))[season[0]]
+        inflow_entsoe_season = dict(inflow_entsoe.groupby("time.season"))[season[0]]
+        # apply by season over all grid cells
         season_transfer.append(lin_transfer_all_countries(season[1].runoff,
                                                           runoff_era5_season.runoff,
-                                                          generation_pecd_season.generation
-                                                         ).to_dataset(name="generation_cesm2")
+                                                          inflow_entsoe_season.inflow,
+                                                          qu_75 = qu_75
+                                                         ).to_dataset(name="inflow_cesm2")
                               )
     ror = xr.concat(season_transfer,dim="time").sortby("time") # add seasons together and sort chunks by time
     # Rolling mean
-    ror = ror.rolling(time=7,center=True).mean()
+    ror = ror.rolling(time=7,center=True).mean() #TODO rolling mean before
     # TODO: change implementation to fit your needs
+
+    # TODO: Scale up
     
     # === Reservoir/pumped hydro ===
     # TODO: implement your setup (potentially streamline with r-o-r setup
-    inflow = xr.DataArray()
+    reservoir = xr.DataArray()
+    # TODO: scale up
     # Save both hydro types in one dictionary
     output = {
-        "ror":ror.generation_cesm2,
-        "inflow":inflow
+        "ror":ror.inflow_cesm2,
+        "inflow":reservoir
     }
-    
+
+    print("Conversion done. Now saving")
     # ===========================
     # === Step 4: Save output ===
     # ===========================
