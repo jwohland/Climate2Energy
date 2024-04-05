@@ -51,7 +51,16 @@ We provide electrified heating demand using the currently electrified share (usi
 
 `bash download_JRC.sh`
 
-from the `code` folder, which downloads and unzipped the required inputs.
+from the `code` folder, which downloads and unzipped the required inputs.https://github.com/energy-modelling-toolkit/hydro-power-database/
+
+### Download JRC Hydropower Database
+Download the file "jrc-hydro-power-plant-database.csv" from the GitHub repo: https://github.com/energy-modelling-toolkit/hydro-power-database/
+Save the file into the `inputs` folder.
+This file contains the location and the installed capacity (nominal power of the turbine) of hydropower plants (run-of-river, reservoir, pumped-hydro) in Europe.
+
+### Download run-of-river generation from ENTSO-e Transparency platform
+
+
 
 ### Code information
 
