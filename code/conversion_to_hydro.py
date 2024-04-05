@@ -11,7 +11,7 @@ from sklearn.metrics import mean_squared_error
 
 path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/lnd/hist/"
 
-def open_runoff(year):
+def open_runoff(year): #TODO: open for all years
     """
     Returns an xarray data set of runoff in Europe for selected year. 
     :param year: int
@@ -29,66 +29,6 @@ def open_runoff(year):
     runoff = runoff.resample(time="D").sum()
     return runoff
 
-def read_pecd_excel(file,sheet):
-    """
-    returns a pandas dataframe with the pecd information from a certain file in a certain sheet
-    :param file:
-    :param sheet:
-    """
-    df = pd.read_excel(file, 
-                      sheet_name=sheet,
-                      header=1,
-                      usecols="D:AM", engine='openpyxl') # because we are forcing an old version of pandas
-    return df
-
-def open_pecd_generation():
-    """
-    Returns a data set of run-of-river energy generation per country for 1982-2017. 
-
-    The countries are taken from the country list needed to run AnyMod on the European grid.
-    
-    Leap days are not included, as they are documented differently across pecd country input excel sheets.
-    """
-    countries = get_country_list() #countries to open
-    pecd_countries = {}
-    not_used = []
-    for country in countries:
-        #checking if file exists
-        file = glob.glob(f"../inputs/pecd/PEMMDB_{countries[country]}00_Hydro_Inflows_2030.xlsx")
-        if file != []: 
-            # open excel as dataframe
-            ror = read_pecd_excel(file[0],"Run of River - Year Dependent")
-            pondage = read_pecd_excel(file[0],"Pondage - Year Dependent")
-            pecd_df = ror.add(pondage,fill_value=0) # add one to the other
-    
-        else: # if country has several bidding zones, it will be treated here
-            files = glob.glob(f"../inputs/pecd/PEMMDB_{countries[country]}*_Hydro_Inflows_2030.xlsx")
-            if files != []: 
-                dfs = []
-                for file in files:
-                    ror = read_pecd_excel(file,"Run of River - Year Dependent")
-                    pondage = read_pecd_excel(file,"Pondage - Year Dependent")
-                    dfs.append(ror.add(pondage,fill_value=0)) # add one to the other
-                pecd_df = dfs[0]
-                for d in dfs[1:]:
-                    pecd_df = pecd_df.add(d,fill_value=0)
-            else:
-                not_used.append(country) #if it's empty, we have no data on this country, and it simply won't be part of our database
-        pecd_df = pecd_df[0:365] # remove leap years (they are differently documented in different countries)
-        if pecd_df.isna().all().all() == False: #if all values are nan, we skip this country
-            df_values = pecd_df.transpose().stack().values #extract values in date format (not dayofyear-year)
-            # date range for data (excel stores values as dayofyear+year)
-            dates = xr.cftime_range(start="1982", end="2017-12-31", freq="D",calendar="noleap")
-            pecd_countries[country] = xr.DataArray(df_values, 
-                                                   dims=["time"],
-                                                   coords ={"time":dates})
-    # create dataset
-    pecd = xr.concat([pecd_countries[country] for country in pecd_countries], dim = "country").to_dataset(name="generation")
-    pecd["country"] = list(pecd_countries.keys()) 
-    
-    print(f"countries with no or empty data: {not_used}")
-    return pecd
-
 def open_era():
     """
     Opens ERA5 runoff for 2017-2022, to use for the transfer function between generation and runoff.
@@ -105,11 +45,19 @@ def open_era():
     era5 = era5.sel(time=~((era5.time.dt.month == 2) & (era5.time.dt.day == 29)))
     return era5
 
-def open_entso_e_generation():
+def open_entsoe_ror():
     # TODO: write up how to open entso e data
     return None
 
-def weighted_aggregation(ds):
+def open_entsoe_reservoir():
+    # TODO: write up how to open entso e data
+    return None
+
+def weighted_aggregation_ror(ds):
+    # TODO: write up weighted average code
+    return ds.mean(("lat","lon"))
+
+def weighted_aggregation_reservoir(ds):
     # TODO: write up weighted average code
     return ds.mean(("lat","lon"))
 
