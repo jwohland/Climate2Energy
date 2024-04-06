@@ -366,7 +366,7 @@ def demand_conversion(bc_realization, scenario, realization):
         # Save raw
         for demand_type in ["heating_demand", "cooling_demand"]:
             file_suffix = demand_type.replace("_", "-") + "_" + str(year)
-            results.loc[demand_type].to_csv(f"{output_path}{file_suffix}.csv")
+            results.loc[demand_type].to_csv(f"{output_path}output_variables/{file_suffix}.csv")
             if demand_type == "heating_demand":
                 # Save scaled heating
                 file_suffix += "_fully-electrified"
@@ -374,7 +374,7 @@ def demand_conversion(bc_realization, scenario, realization):
                 df_heating_scaled = scale_heating_demand(
                     1, compute_share_df(), results.loc[demand_type].copy()
                 )
-                df_heating_scaled.to_csv(f"{output_path}{file_suffix}.csv")
+                df_heating_scaled.to_csv(f"{output_path}output_variables/{file_suffix}.csv")
 
 
 if __name__ == "__main__":
