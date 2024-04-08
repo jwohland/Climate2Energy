@@ -60,13 +60,13 @@ for year in get_time_range(scenario):
     ####################
     ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
     ds_CF_wind_corrected = convert_winds(
-        ds_corr_wind.load(),  # needs to be loaded here because lazy doesn't work with apply_ufunc
-        ds_rho.load(),
+        ds_corr_wind,
+        ds_rho,
         alpha,
     )  # this expects that ds has variable called s_hub with hub height winds
     ds_CF_wind_uncorrected = convert_winds(
-        ds_corr_wind.load(),  # needs to be loaded here because lazy doesn't work with apply_ufunc
-        ds_rho.load(),
+        ds_corr_wind,
+        ds_rho,
         alpha,
         density_correct=False,  # if set to False, no density correction is performed
     )  # this expects that ds has variable called s_hub with hub height winds
