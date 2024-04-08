@@ -110,7 +110,7 @@ def convert_winds(ds_wind, ds_rho, alpha, density_correct=True):
             ds_hub = density_correct_winds(ds_hub, ds_rho, hub_height)
         # Apply power curve
         wind_power = xr.apply_ufunc(
-            P.power_conversion, ds_hub["s_hub"], vectorize=True, dask="allowed"
+            P.power_conversion, ds_hub["s_hub"], vectorize=True, dask="parallelized"
         ).to_dataset()
         wind_power = update_attrs(
             wind_power, "s_hub", "", "CF_wind", "normalized_wind_power_generation"
