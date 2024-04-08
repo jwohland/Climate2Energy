@@ -96,12 +96,12 @@ for year in get_time_range(scenario):
         for onshore in [True, False]:
             if onshore:
                 if method == "corrected":
-                    ds_tmp_countries = ds_CF_wind_countries
+                    ds_tmp_full = ds_CF_wind_countries
                 else:
                     ds_tmp_full = ds_CF_wind_countries_uncorrected
             else:
                 if method == "corrected":
-                    ds_tmp_countries = ds_CF_wind_countries_offshore
+                    ds_tmp_full = ds_CF_wind_countries_offshore
                 else:
                     ds_tmp_full = ds_CF_wind_countries_offshore_uncorrected
             for i in range(3):
@@ -110,7 +110,10 @@ for year in get_time_range(scenario):
                 store_as_pandas_dataframe(
                     ds_tmp["CF_wind"],
                     name=f"Wind-power_{year}_{turbine_name}_onshore_{onshore}_density_{method}",
+                    path=output_path,
                 )
     # PV
-    store_as_pandas_dataframe(ds_CF_PV_countries["pv"], name=f"PV_{year}")
+    store_as_pandas_dataframe(
+        ds_CF_PV_countries["pv"], name=f"PV_{year}", path=output_path
+    )
     print("Everything finished and saved")
