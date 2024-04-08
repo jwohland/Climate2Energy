@@ -177,14 +177,14 @@ def temp_cel(ds):
         return None
 
 
-def store_as_pandas_dataframe(ds, name):
+def store_as_pandas_dataframe(ds, name, path):
     """
 
     :param ds:
     :param name:
     :return:
     """
-    ds.to_pandas().to_csv("../output/" + name + ".csv")
+    ds.to_pandas().to_csv(f"{path}output_variables/" + name + ".csv")
 
 
 
