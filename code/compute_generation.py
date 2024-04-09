@@ -8,7 +8,22 @@ import time
 ####################
 # Prep
 ####################
-def generation_conversion(bc_realization, scenario, realization, year):
+def generation_conversion(bc_realization, scenario, realization, year, test_data=False):
+    """
+    Compute wind and solar generation for a given
+    - bias correction realization
+    - scenario
+    - realization
+    - year
+
+    If test_data==True, then only the first 10 time steps are computed.
+    :param bc_realization: A, B, C
+    :param scenario: historical, SSP245, SSP370
+    :param realization: A,B,C
+    :param year: 1995-2015 (historical), 2080-2099 SSPs
+    :param test_data: True, False
+    :return:
+    """
     output_path = get_output_path(bc_realization, scenario, realization)
     print(f"Open files for year {year}")
     ts = time.time()
@@ -16,17 +31,17 @@ def generation_conversion(bc_realization, scenario, realization, year):
     # Step 0: Open data
     ####################
     ds_wind, ds_rho, ds_PV = open_wind_solar(
-        year, scenario, realization, test_data=False
+        year, scenario, realization, test_data=test_data
     )  # test_data=True allows for quick test with only 10 timesteps
     print(
-        f"Files opened. Took {(int(time.time()-ts)/60)} minutes. Next: bias correction"
+        f"Files opened. Took {int((time.time()-ts)/60)} minutes. Next: bias correction"
     )
     ts = time.time()
     ds_wind.load()
     ds_PV.load()
     ds_rho.load()
     print(
-        f"Files loaded. Took {(int(time.time()-ts)/60)} minutes. Next: bias correction"
+        f"Files loaded. Took {int((time.time()-ts)/60)} minutes. Next: bias correction"
     )
     ####################
     # Step 1: Bias correction
@@ -44,7 +59,7 @@ def generation_conversion(bc_realization, scenario, realization, year):
     )  # careful: this outputs s_hub even though these are 100m winds
     ds_corr_wind = bias_correct_dataset(ds_interpolated, "s_hub", bc_realization)
     print(
-        f"Bias correction finished. Took {(int(time.time()-ts)/60)} minutes. Next: conversion to capacity factors"
+        f"Bias correction finished. Took {int((time.time()-ts)/60)} minutes. Next: conversion to capacity factors"
     )
 
     # Save bias-corrected fields
@@ -68,7 +83,7 @@ def generation_conversion(bc_realization, scenario, realization, year):
         alpha,
     )  # this expects that ds has variable called s_hub with hub height winds
     print(
-        f"Wind CF with density correction  finished. Took {(int(time.time()-ts)/60)} minutes."
+        f"Wind CF with density correction  finished. Took {int((time.time()-ts)/60)} minutes."
     )
     ts = time.time()
     ds_CF_wind_uncorrected = convert_winds(
@@ -78,7 +93,7 @@ def generation_conversion(bc_realization, scenario, realization, year):
         density_correct=False,  # if set to False, no density correction is performed
     )  # this expects that ds has variable called s_hub with hub height winds
     print(
-        f"Wind CF without density correction  finished. Took {(int(time.time() - ts) / 60)} minutes."
+        f"Wind CF without density correction  finished. Took {int((time.time() - ts) / 60)} minutes."
     )
 
     # Save capacity factor fields
@@ -100,7 +115,7 @@ def generation_conversion(bc_realization, scenario, realization, year):
     ds_CF_wind_countries_offshore_uncorrected = country_means(
         ds_CF_wind_uncorrected, onshore=False
     )
-    print(f"Country subsetting finished. Took {(int(time.time() - ts) / 60)} minutes. ")
+    print(f"Country subsetting finished. Took {int((time.time() - ts) / 60)} minutes. ")
 
     # Step4: Save capacity factor csv files
     # wind
