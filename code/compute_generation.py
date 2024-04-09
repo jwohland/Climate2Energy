@@ -8,19 +8,7 @@ import time
 ####################
 # Prep
 ####################
-scenario = str(sys.argv[1])
-realization = str(sys.argv[2])
-bc_realization = str(sys.argv[3])
-output_path = get_output_path(bc_realization, scenario, realization)
-print(
-    f"Computing generation for scenario {scenario} realization {realization},"
-    f" using bias-correction based on historical realization {bc_realization}"
-)
-
-# Create directory structure
-create_directories()
-
-for year in get_time_range(scenario):
+def generation_conversion(bc_realization, scenario, realization, year):
     print(f"Open files for year {year}")
     ts = time.time()
     ####################
@@ -111,9 +99,7 @@ for year in get_time_range(scenario):
     ds_CF_wind_countries_offshore_uncorrected = country_means(
         ds_CF_wind_uncorrected, onshore=False
     )
-    print(
-        f"Country subsetting finished. Took {(int(time.time() - ts) / 60)} minutes. "
-    )
+    print(f"Country subsetting finished. Took {(int(time.time() - ts) / 60)} minutes. ")
 
     # Step4: Save capacity factor csv files
     # wind
@@ -142,3 +128,19 @@ for year in get_time_range(scenario):
         ds_CF_PV_countries["pv"], name=f"PV_{year}", path=output_path
     )
     print("Everything finished and saved")
+
+
+if __name__ == "__main__":
+    # Create directory structure
+    create_directories()
+
+    scenario = str(sys.argv[1])
+    realization = str(sys.argv[2])
+    bc_realization = str(sys.argv[3])
+    output_path = get_output_path(bc_realization, scenario, realization)
+    print(
+        f"Computing generation for scenario {scenario} realization {realization},"
+        f" using bias-correction based on historical realization {bc_realization}"
+    )
+    for year in get_time_range(scenario):
+        generation_conversion(bc_realization, scenario, realization, year)
