@@ -130,7 +130,7 @@ def open_wind_solar(year, scenario, realization, test_data=False):
     ds_wind = find_height(ds_wind)
 
     # air density
-    ds_rho = ds_atm.sel(ilev=slice(900, 1200), lev=slice(900, 1200))[
+    ds_rho = ds_atm.sel.isel(lev=slice(29, 32), ilev=slice(29, 33))[
         ["RHO_CLUBB", "Z3"]
     ]  # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev
     # we here select slices that contain hub height pressure on the GCM grid
@@ -260,23 +260,23 @@ def add_target_pressure_level(ds, target_height):
     orography.
 
     Conversion assumes that target height sits between pressure
-    levels 3 and 4, which roughly correspond to 195m and 60m above ground.
+    levels 1 and 2, which roughly correspond to 195m and 60m above ground.
 
     :param ds:
     :param target_height:
     :return:
     """
     ds = find_height(ds)  # height above ground
-    a = (target_height - ds.height.isel(lev=3)) / (
-        ds.height.isel(lev=4) - ds.height.isel(lev=3)
+    a = (target_height - ds.height.isel(lev=1)) / (
+        ds.height.isel(lev=2) - ds.height.isel(lev=1)
     )
-    ds["p_target"] = a * ds.lev.isel(lev=4) + (1 - a) * ds.lev.isel(lev=3)
+    ds["p_target"] = a * ds.lev.isel(lev=2) + (1 - a) * ds.lev.isel(lev=1)
     return ds
 
 
 def compute_density_target(
     ds, target_height=120
-):  # todo target height needs to be aligned with multiple hub heights
+):
     """
     Interpolation of atmospheric density which is reported
     between model levels to the pressure level that corresponds
