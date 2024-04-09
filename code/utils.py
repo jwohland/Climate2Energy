@@ -130,7 +130,7 @@ def open_wind_solar(year, scenario, realization, test_data=False):
     ds_wind = find_height(ds_wind)
 
     # air density
-    ds_rho = ds_atm.sel.isel(lev=slice(29, 32), ilev=slice(29, 33))[
+    ds_rho = ds_atm.isel(lev=slice(29, 32), ilev=slice(29, 33))[
         ["RHO_CLUBB", "Z3"]
     ]  # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev
     # we here select slices that contain hub height pressure on the GCM grid
