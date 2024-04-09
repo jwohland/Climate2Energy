@@ -9,6 +9,7 @@ import time
 # Prep
 ####################
 def generation_conversion(bc_realization, scenario, realization, year):
+    output_path = get_output_path(bc_realization, scenario, realization)
     print(f"Open files for year {year}")
     ts = time.time()
     ####################
@@ -137,7 +138,6 @@ if __name__ == "__main__":
     scenario = str(sys.argv[1])
     realization = str(sys.argv[2])
     bc_realization = str(sys.argv[3])
-    output_path = get_output_path(bc_realization, scenario, realization)
     print(
         f"Computing generation for scenario {scenario} realization {realization},"
         f" using bias-correction based on historical realization {bc_realization}"
