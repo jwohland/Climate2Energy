@@ -105,6 +105,41 @@ def open_entsoe(tech):
 
     return ds_ror
 
+def open_entsoe_inflow():
+    year_0 = 2016
+    year_N = 2019
+
+    folder_path = "../inputs/entsoe_inflow/"
+
+    #read all files, each file corresponds to a country
+    files = glob.glob(folder_path + "*.csv")
+    file_names = [f.split("/")[-1] for f in files]
+    country_list = [f.split("_")[3] for f in file_names]
+
+    start_date = datetime.datetime(year_0, 1, 4)
+    end_date = datetime.datetime(year_N, 12, 26)
+
+    # Generate the weekly timeseries
+    dates = []
+    current_date = start_date
+    while current_date <= end_date:
+        dates.append(current_date)
+        current_date += timedelta(days=7)
+
+    # Create the dataset
+    ds_inflow = xr.Dataset(coords={'time': dates,'country': country_list}, data_vars={'inflow': (('time', 'country'), np.full((len(dates), len(country_list)),np.nan))})
+
+    # Fill the dataset
+    for country in country_list:
+        df_inflow = pd.read_csv(folder_path + 'Inflow_' +country +"_2016-2019.csv")
+        df_inflow['ind'] = pd.to_datetime(df_inflow['ind'])
+        df_inflow = df_inflow.drop_duplicates(subset='ind', keep='first')
+
+        # Add the country inflow in the dataset
+        ds_inflow['inflow'].loc[dict(time=df_inflow['ind'].values,country=country)] = df_inflow['0'].values
+
+    return ds_inflow
+
 def weighted_aggregation(ds_runoff,tech):
     """
     Aggregates the runoff data to country level, using the JRC dataset as a reference for the weighting coefficients.
