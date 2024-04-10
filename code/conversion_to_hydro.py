@@ -73,6 +73,21 @@ def open_era():
     return era5
 
 def open_entsoe(tech):
+    """
+    Opens the ENTSO-e data for the technology specified (either inflow or ror)
+    :param tech: string
+    """
+    if tech == "inflow":
+        return open_entsoe_inflow()
+    elif tech == "ror":
+        return open_entsoe_ror()
+    else:
+        print("Technology not recognized. Please choose 'inflow' or 'ror'")
+
+def open_entsoe_ror():
+    """
+    Opens the ENTSO-e data for the ror technology.
+    """
     year_0 = 2017
     year_N = 2022
 
