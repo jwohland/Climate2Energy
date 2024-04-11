@@ -9,8 +9,10 @@ do
       do
         conda activate CESM2energy
         python compute_bias_correction.py ${scenario} ${realization} ${bc_realization}
-        # todo 1) bias_correct.py; 2) compute_wind_generation.py; 3) compute PV_generation.py
-        python compute_generation.py ${scenario} ${realization} ${bc_realization} > ../logs/compute_generation_log_$(date +%Y_%m_%d_%H).txt
+        python compute_generation.py ${scenario} ${realization} ${bc_realization} Wind > ../logs/compute_generation_wind_log_$(date +%Y_%m_%d_%H).txt
+        # Optional also run without density correction
+        # python compute_generation.py ${scenario} ${realization} ${bc_realization} Wind False  > ../logs/compute_generation_wind_log_$(date +%Y_%m_%d_%H).txt
+        python compute_generation.py ${scenario} ${realization} ${bc_realization} PV > ../logs/compute_generation_PV_log_$(date +%Y_%m_%d_%H).txt
         conda deactivate
         conda activate demand_ninja
         python compute_demand.py ${scenario} ${realization} ${bc_realization} > ../logs/compute_demand_log_$(date +%Y_%m_%d_%H).txt
