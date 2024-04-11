@@ -2,7 +2,9 @@
 mkdir -p ../logs
 for bc_realization in A B C
 do
+    conda activate CESM2energy
     python compute_bias_correction_prep.py ${bc_realization}  # Input files for bias correction
+    conda deactivate
     for scenario in historical SSP370
     do
       for realization in A B C
