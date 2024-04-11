@@ -24,6 +24,31 @@ def bias_correct_per_loc(reference, model, da, method="basic_quantile"):
         return bc.correct(method=method)
 
 
+def prepare_bias_correction(bc_realization):
+    """
+    Prepare bias correction input files using CESM2 realization
+    bc_realization and ERA5.
+
+    Internally, this loops over temperature, global_horizontal and s_hub
+
+    :param bc_realization: A, B, C
+    :return:
+    """
+    for var in ["temperature", "global_horizontal", "s_hub"]:
+        ref_file = f"../output/bias_correction/Raw_ERA5_{var}.nc"
+        mod_file = f"../output/bias_correction/{bc_realization}/Raw_CESM2_{var}_{bc_realization}.nc"
+        if glob.glob(ref_file) == []:
+            print(f"missing historical ERA5 file for {var}")
+            subprocess.run(
+                ["bash", f"preprocess/preprocess_{var}_ERA5.sh"]
+            )
+        if glob.glob(mod_file) == []:
+            print(f"missing historical model file for {var} for historical realization {bc_realization}")
+            bc_identifier = CESM2_REALIZATION_DICT["historical"][bc_realization]
+            subprocess.run(
+                ["bash", f"preprocess/preprocess_{var}_CESM2.sh", bc_realization, bc_identifier]
+            )
+
 def bias_correct_dataset(ds, var, bc_realization, method="basic_quantile"):
     """
     takes a data array da of a chosen variable var, and returns the
@@ -32,18 +57,6 @@ def bias_correct_dataset(ds, var, bc_realization, method="basic_quantile"):
     """
     ref_file = f"../output/bias_correction/Raw_ERA5_{var}.nc"
     mod_file = f"../output/bias_correction/{bc_realization}/Raw_CESM2_{var}_{bc_realization}.nc"
-    # making sure that the reference and model data is available
-    if glob.glob(ref_file) == []:
-        print(f"missing historical ERA5 file for {var}")
-        subprocess.run(
-            ["bash", f"preprocess/preprocess_{var}_ERA5.sh"]
-        )
-    if glob.glob(mod_file) == []:
-        print(f"missing historical model file for {var} for historical realization {bc_realization}")
-        bc_identifier = CESM2_REALIZATION_DICT["historical"][bc_realization]
-        subprocess.run(
-            ["bash", f"preprocess/preprocess_{var}_CESM2.sh", bc_realization, bc_identifier]
-        )
     # open reference and model data
     reference = zero_mean_longitudes(xr.open_dataset(ref_file))
     model = zero_mean_longitudes(xr.open_dataset(mod_file))
