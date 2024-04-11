@@ -8,6 +8,7 @@ do
       for realization in A B C
       do
         conda activate CESM2energy
+        python compute_bias_correction.py ${scenario} ${realization} ${bc_realization}
         # todo 1) bias_correct.py; 2) compute_wind_generation.py; 3) compute PV_generation.py
         python compute_generation.py ${scenario} ${realization} ${bc_realization} > ../logs/compute_generation_log_$(date +%Y_%m_%d_%H).txt
         conda deactivate

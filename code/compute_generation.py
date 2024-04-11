@@ -44,49 +44,20 @@ class Generation:
         print(f"Open files for year {year}")
         ts = time.time()
         ####################
-        # Step 0: Open data
+        # Step 1: Open bias corrected data
         ####################
-        ds_wind, ds_rho, ds_PV = open_wind_solar(
-            year, self.scenario, self.realization, test_data=test_data
-        )  # test_data=True allows for quick test with only 10 timesteps
-        print(
-            f"Files opened. Took {int((time.time()-ts)/60)} minutes. Next: bias correction"
-        )
-        ts = time.time()
-        ds_wind.load()
-        ds_PV.load()
-        ds_rho.load()
-        print(
-            f"Files loaded. Took {int((time.time()-ts)/60)} minutes. Next: bias correction"
-        )
-        ####################
-        # Step 1: Bias correction
-        ####################
-        ts = time.time()
-        ds_corr_PV = xr.Dataset()
-        for var in ["temperature", "global_horizontal"]:
-            print(var)
-            ds_corr_PV[var] = bias_correct_dataset(ds_PV, var, bc_realization)
-
-        print("s_hub")
-        # Extrapolate model to 100m (i.e., ERA5 height), then bias correct
-        ds_interpolated, alpha = interpolate_wind_xr(
-            ds_wind, 100
-        )  # careful: this outputs s_hub even though these are 100m winds
-        ds_corr_wind = bias_correct_dataset(ds_interpolated, "s_hub", bc_realization)
-        print(
-            f"Bias correction finished. Took {int((time.time()-ts)/60)} minutes. Next: conversion to capacity factors"
-        )
-
-        # Save bias-corrected fields
         bc_output_path = f"{output_path}atmospheric_variables/"
-        ds_corr_wind.to_netcdf(f"{bc_output_path}bced_CESM2_s100_{year}.nc")
-        ds_corr_PV["temperature"].to_dataset().to_netcdf(
-            f"{bc_output_path}bced_CESM2_temperature_{year}.nc"
+        ds_corr_wind = xr.open_dataset(f"{bc_output_path}bced_CESM2_s100_{year}.nc")
+        ds_corr_PV = xr.merge(
+            [
+                xr.open_dataset(f"{bc_output_path}bced_CESM2_temperature_{year}.nc"),
+                xr.open_dataset(
+                    f"{bc_output_path}bced_CESM2_global-horizontal_{year}.nc"
+                ),
+            ]
         )
-        ds_corr_PV["global_horizontal"].to_dataset().to_netcdf(
-            f"{bc_output_path}bced_CESM2_global-horizontal_{year}.nc"
-        )
+        ds_rho = xr.open_dataset(f"{bc_output_path}CESM2_rho_{year}.nc")
+        alpha = xr.open_dataset(f"{bc_output_path}CESM2_alpha_{year}.nc")
 
         ####################
         # Step 2: Calculate capacity factors
@@ -167,9 +138,6 @@ class Generation:
 
 
 if __name__ == "__main__":
-    # Create directory structure
-    create_directories()
-
     scenario = str(sys.argv[1])
     realization = str(sys.argv[2])
     bc_realization = str(sys.argv[3])
