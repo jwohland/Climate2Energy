@@ -146,7 +146,7 @@ class Generation:
         ####################
         # Step 2: Calculate capacity factors
         ####################
-        ds_CF_PV = calculate_PV(ds_corr_PV, params=None)
+        ds_CF_PV = calculate_PV(ds_corr_PV, params=None, num_cores=32)
 
         # Save capacity factor fields
         ds_CF_PV.to_netcdf(f"{self.output_path}output_variables/PV_{year}.nc")
