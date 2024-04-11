@@ -147,7 +147,7 @@ def open_wind_solar(year, scenario, realization, test_data=False):
             "time"
         ].to_datetimeindex()  # time index that GSEE understands
 
-    return ds_wind, ds_rho, ds_PV
+    return ds_wind.load(), ds_rho.load(), ds_PV.load()
 
 
 def zero_mean_longitudes(ds):
