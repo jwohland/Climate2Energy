@@ -81,7 +81,7 @@ def update_attrs(ds, var, unitname, varname, long_varname):
     return ds
 
 
-def convert_winds(ds_wind, ds_rho, alpha, density_correct=True):
+def convert_winds(ds_wind, ds_rho, ds_alpha, density_correct=True):
     """
     Convert 100m wind speeds to wind capacity factors for the three turbines.
 
@@ -102,9 +102,7 @@ def convert_winds(ds_wind, ds_rho, alpha, density_correct=True):
         print(P.turbine_name)
         # Extrapolate to hub height
         hub_height = get_hub_heights(P.turbine_name)
-        ds_hub = extrapolate_wind_xr(ds_wind, 100, hub_height, alpha).to_dataset(
-            name="s_hub"
-        )
+        ds_hub = extrapolate_wind_xr(ds_wind, 100, hub_height, ds_alpha)
         # Density correction
         if density_correct:
             ds_hub = density_correct_winds(ds_hub, ds_rho, hub_height)
