@@ -61,12 +61,12 @@ class Correction:
 
             print("s_hub")
             # Extrapolate model to 100m (i.e., ERA5 height), then bias correct
-            ds_interpolated, alpha = interpolate_wind_xr(
+            ds_interpolated, da_alpha = interpolate_wind_xr(
                 ds_wind, 100
             )  # careful: this outputs s_hub even though these are 100m winds
             ds_corr_wind = bias_correct_dataset(ds_interpolated, "s_hub", self.bc_realization)
             print(
-                f"Bias correction finished. Took {int((time.time()-ts)/60)} minutes. Next: conversion to capacity factors"
+                f"Bias correction finished. Took {int((time.time()-ts)/60)} minutes."
             )
 
             # Save bias-corrected fields
@@ -78,7 +78,7 @@ class Correction:
                 f"{bc_output_path}bced_CESM2_global-horizontal_{year}.nc"
             )
             # Save other needed files
-            alpha.to_netcdf(f"{bc_output_path}CESM2_alpha_{year}.nc")
+            da_alpha.to_dataset(name="alpha").to_netcdf(f"{bc_output_path}CESM2_alpha_{year}.nc")
             ds_rho.to_netcdf(f"{bc_output_path}CESM2_rho_{year}.nc")
 
 
