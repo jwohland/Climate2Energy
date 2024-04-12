@@ -94,7 +94,7 @@ class Generation:
                 turbine_name = str(ds_tmp.turbine.values)
                 filename = f"Wind-power_{year}_{turbine_name}_onshore_{onshore}"
                 if self.density_correct:
-                    filename += "density_corrected"
+                    filename += "_density_corrected"
                 store_as_pandas_dataframe(
                     ds_tmp["CF_wind"],
                     name=filename,
