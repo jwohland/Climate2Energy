@@ -66,16 +66,6 @@ class Generation:
         print(
             f"Wind CF with density correction  finished. Took {int((time.time()-ts)/60)} minutes."
         )
-        ts = time.time()
-        ds_CF_wind_uncorrected = convert_winds(
-            ds_corr_wind,
-            ds_rho,
-            alpha,
-            density_correct=False,  # if set to False, no density correction is performed
-        )  # this expects that ds has variable called s_hub with hub height winds
-        print(
-            f"Wind CF without density correction  finished. Took {int((time.time() - ts) / 60)} minutes."
-        )
 
         # Save capacity factor fields
         filename = f"Wind-power_{str(year)}"
