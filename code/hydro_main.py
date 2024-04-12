@@ -8,7 +8,7 @@ import numpy as np
 
 # create necessary directories (for pecd and entso-e data)
 year = 2010
-technologies = ["ror"]#,"inflow"] TODO: implement for inflow
+technologies = ["ror","inflow"]
 rolling = {"ror":21,"inflow":3} # time to roll over - since inflow is weekly 3 weeks = 21 days
 
 # =====================================================

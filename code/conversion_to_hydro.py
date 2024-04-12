@@ -7,7 +7,7 @@ import numpy as np
 import scipy
 import os
 import statsmodels.api as sm
-import datetime as datetime
+import datetime as dt
 
 path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/lnd/hist/"
 
@@ -106,8 +106,8 @@ def open_entsoe_ror():
             df_ror_full = pd.read_csv(folder_path+country+'/Actual Generation per Production Type_'+str(year)+'01010000-'+str(year+1)+'01010000.csv')
 
             # Convert date to datetime and delta_time (the MTU column has this format:"01.01.2022 00:00 - 01.01.2022 01:00 (CET/CEST)")
-            df_ror_full['time'] = df_ror_full['MTU'].apply(lambda x: datetime.datetime(year=int(x[6:10]), month=int(x[3:5]), day=int(x[0:2])))
-            df_ror_full['delta_time'] = df_ror_full['MTU'].apply(lambda x: (datetime.datetime.strptime(x.split(" - ")[1].split(" ")[0] +' '+x.split(" - ")[1].split(" ")[1], "%d.%m.%Y %H:%M") - datetime.datetime.strptime(x.split(" - ")[0], "%d.%m.%Y %H:%M")).total_seconds() / 3600)
+            df_ror_full['time'] = df_ror_full['MTU'].apply(lambda x: dt.datetime(year=int(x[6:10]), month=int(x[3:5]), day=int(x[0:2])))
+            df_ror_full['delta_time'] = df_ror_full['MTU'].apply(lambda x: (dt.datetime.strptime(x.split(" - ")[1].split(" ")[0] +' '+x.split(" - ")[1].split(" ")[1], "%d.%m.%Y %H:%M") - dt.datetime.strptime(x.split(" - ")[0], "%d.%m.%Y %H:%M")).total_seconds() / 3600)
 
             # Calculate GWh per each time step
             df_ror_full['ror_GWh'] = df_ror_full['Hydro Run-of-river and poundage  - Actual Aggregated [MW]']*df_ror_full['delta_time']/1000
@@ -129,20 +129,20 @@ def open_entsoe_inflow():
     #read all files, each file corresponds to a country
     files = glob.glob(folder_path + "*.csv")
     file_names = [f.split("/")[-1] for f in files]
-    country_list = [f.split("_")[3] for f in file_names]
+    country_list = [f.split("_")[1] for f in file_names]
 
-    start_date = datetime.datetime(year_0, 1, 4)
-    end_date = datetime.datetime(year_N, 12, 26)
+    start_date = dt.datetime(year_0, 1, 4)
+    end_date = dt.datetime(year_N, 12, 26)
 
     # Generate the weekly timeseries
     dates = []
     current_date = start_date
     while current_date <= end_date:
         dates.append(current_date)
-        current_date += timedelta(days=7)
+        current_date += dt.timedelta(days=7)
 
     # Create the dataset
-    ds_inflow = xr.Dataset(coords={'time': dates,'country': country_list}, data_vars={'inflow': (('time', 'country'), np.full((len(dates), len(country_list)),np.nan))})
+    ds_inflow = xr.Dataset(coords={'time': dates,'country': country_list}, data_vars={'inflow_GWh': (('time', 'country'), np.full((len(dates), len(country_list)),np.nan))})
 
     # Fill the dataset
     for country in country_list:
@@ -151,7 +151,7 @@ def open_entsoe_inflow():
         df_inflow = df_inflow.drop_duplicates(subset='ind', keep='first')
 
         # Add the country inflow in the dataset
-        ds_inflow['inflow'].loc[dict(time=df_inflow['ind'].values,country=country)] = df_inflow['0'].values
+        ds_inflow['inflow_GWh'].loc[dict(time=df_inflow['ind'].values,country=country)] = df_inflow['0'].values
 
     return ds_inflow
 
