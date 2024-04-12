@@ -220,17 +220,17 @@ def interpolate_wind_xr(ds, output_height=120):
     return ds_hub, alpha
 
 
-def extrapolate_wind_xr(da, input_height, output_height, alpha):
+def extrapolate_wind_xr(ds, input_height, output_height, ds_alpha):
     """
     Extrapolate wind speeds in ds from the input height to the output height using
     the power law and precomputed alpha values (per timestep and location)
-    :param da: DataArray of wind speeds at input height
+    :param ds: Dataset of wind speeds at input height
     :param input_height:
     :param output_height:
-    :param alpha:
-    :return:
+    :param ds_alpha: dataset of wind profile parameters alpha
+    :return: dataset of winds at output height
     """
-    return da * (output_height / input_height) ** alpha
+    return ds * (output_height / input_height) ** ds_alpha["alpha"]
 
 
 def create_directories():
@@ -333,10 +333,9 @@ def density_correct_winds(ds_wind, ds_rho, target_height):
     :return:
     """
     rho_std = 1.225  # kg/m3 according to IEC 61400-12
-    ds_tmp = ds_wind["s_hub"] * (
+    ds_tmp = ds_wind * (
         compute_density_target(ds_rho.copy(), target_height)["RHO_target"] / rho_std
     ) ** (1 / 3)
-    ds_tmp = ds_tmp.to_dataset(name="s_hub")
     return ds_tmp
 
 
