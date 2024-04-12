@@ -43,8 +43,8 @@ for tech in technologies:
     # === Step 2: Convert to hydropower ===
     # =====================================
     
-    # get 75th percentile of CESM2 runoff, for each country regardless of season
-    qu_75 = get_qu_75(runoff)
+    # get 75th percentile of runoff (use ERA5 to get multiple years of data), for each country regardless of season
+    qu_75 = get_qu_75(calibration_ds)
     # Treat seasons separately
     season_transfer = []
     for season in runoff.groupby("time.season"):
@@ -60,11 +60,11 @@ for tech in technologies:
     total_transfer = xr.concat(season_transfer,dim="time").sortby("time") # add seasons together and sort chunks by time
     
     # Scale up to fit yearly avearge production values
-    Scaled_total_transfer = scale_up(ds,tech)
+    Scaled_total_transfer = scale_up(total_transfer,tech)
     
     print(f"Conversion for tech {tech} done. Now saving")
     # ===========================
     # === Step 3: Save output ===
     # ===========================
-    store_as_pandas_dataframe(Scaled_total_transfer, f"hydro_{tech}_{year}")
+    store_as_pandas_dataframe(Scaled_total_transfer[f"{tech}_GWh"], f"hydro_{tech}_{year}")
     

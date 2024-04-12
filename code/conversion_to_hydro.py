@@ -240,6 +240,12 @@ def lin_transfer_no_b(runoff_cesm2, calibration,tech):
     slope = model.fit().params #TODO: make sure it works for Nans (ignore them)
     return slope*runoff_cesm2
 
+def condition_75th(ds, q, over_under):
+    if over_under == "over":
+        return ds > q
+    elif over_under == "under":
+        return ds < q
+
 def lin_transfer_all_countries(runoff_cesm2, calibration,tech,qu_75=np.nan):
     """ 
     Applies a linear transfer function across countries. If qu_75 is nan, it applies f(x) = ax + b for all values. Else, qu_75 is the value at which you differentiate: f(x) = ax for runoff < qu_75 (normal values), and f(x) = ax + b for runoff > qu_75 (spillover)
@@ -254,27 +260,29 @@ def lin_transfer_all_countries(runoff_cesm2, calibration,tech,qu_75=np.nan):
         calib_country = calibration.sel(country=country).dropna(dim="time") #linear regressions can't handle nans
         runoff_country = runoff_cesm2.sel(country=country)
         qu_75_country = qu_75.sel(country=country)
-        if np.isnan(qu_75_country) == False: #linear transfer differentiated based on 75th percentile value 
-            # loop over the different statements (above or under 75th percentile) to get the two specialized datasets
-            differenciate = {"sub_q":runoff_country < qu_75_country, "sup_q":runoff_country > qu_75_country}
-            ds_cond_on_q = {}
-            for statement in differenciate: 
-                runoff_cond = runoff_country.where(differenciate[statement],drop=True)
-                calib_cond = calib_country.where(differenciate[statement],drop=True)
-                ds_cond_on_q[statement] = [runoff_cond, calib_cond]
-            # f(x) = ax for values under qu_75 
-            cesm2_transferred_no_b = lin_transfer_no_b(*ds_cond_on_q["sub_q"],tech)
-            # f(x) = ax + b for values above qu_75
-            cesm2_transferred_with_b = lin_transfer(*ds_cond_on_q["sup_q"],tech)
-            # concatenat the two
-            cesm2_transferred = xr.concat([cesm2_transferred_no_b,cesm2_transferred_with_b],dim="time").sortby("time")
-        else: # no differentiating based on 75th percentile
-            # f(x) = ax + b                                     
-            cesm2_transferred = lin_transfer(runoff_country,calib_country,tech)
-        transferred.append(cesm2_transferred)
+        if len(calib_country.runoff) > 0:
+            if np.isnan(qu_75_country) == False: #linear transfer differentiated based on 75th percentile value 
+                # loop over the different statements (above or under 75th percentile) to get the two specialized datasets
+                ds_cond_on_q = {}
+                for statement in ["under","over"]: 
+                    runoff_cond = runoff_country.where(condition_75th(runoff_country, qu_75_country, statement),drop=True)
+                    calib_cond = calib_country.where(condition_75th(calib_country.runoff, qu_75_country, statement),drop=True)
+                    ds_cond_on_q[statement] = [runoff_cond, calib_cond]
+                # f(x) = ax for values under qu_75 
+                cesm2_transferred_no_b = lin_transfer_no_b(*ds_cond_on_q["under"],tech)
+                # f(x) = ax + b for values above qu_75
+                cesm2_transferred_with_b = lin_transfer(*ds_cond_on_q["over"],tech)
+                # concatenat the two
+                cesm2_transferred = xr.concat([cesm2_transferred_no_b,cesm2_transferred_with_b],dim="time").sortby("time")
+            else: # no differentiating based on 75th percentile
+                # f(x) = ax + b                                     
+                cesm2_transferred = lin_transfer(runoff_country,calib_country,tech)
+            transferred.append(cesm2_transferred)
+        else:
+            transferred.append(runoff_country*0) #return dataarray of zeros
         
     transferred = xr.concat(transferred,dim="country")
-    transferred["country"] = list(runoff_cesm2.country)
+    transferred["country"] = list(runoff_cesm2.country.values)
     return transferred
 
 def read_annual_prod(countries, tech):
@@ -283,21 +291,21 @@ def read_annual_prod(countries, tech):
     :param countries: list of country codes
     :param tech: string
     """
-    prod_per_country = np.zeros(countries)
+    prod_per_country = np.zeros(len(countries))
     delim = [";","\t",","] # different years have different delimiters for their .csv file
     time_range = range(2021,2024) #time range considered
     for j,year in enumerate(time_range):
         annual_prod = pd.read_csv(f"../inputs/entsoe/monthly_domestic_values_{year}.csv",delimiter=delim[j])
         for i,country in enumerate(countries):
-            annual_prod = annual_prod[annual_prod['Country'] == countries[country]] #choosing country
+            annual_prod_country = annual_prod[annual_prod['Country'] == country] #choosing country
             if tech == "ror":
                 # select technology and sum over months
-                annual_prod = annual_prod[annual_prod["Category"] == "Hydro Run-of-river and poundage"]["ProvidedValue"].sum()
-                prod_per_country[i] += annual_prod #adding annual sum for each year
+                annual_prod_country = annual_prod_country[annual_prod_country["Category"] == "Hydro Run-of-river and poundage"]["ProvidedValue"].sum()
+                prod_per_country[i] += annual_prod_country #adding annual sum for each year
             elif tech == "inflow":
                 for sub_tech in["Hydro Water Reservoir", "Hydro Pumped Storage"]:
                     # select sub-technology and sum over months
-                    annual_prod_sub_tech = annual_prod[annual_prod["Category"] == sub_tech]["ProvidedValue"].sum()
+                    annual_prod_sub_tech = annual_prod_country[annual_prod_country["Category"] == sub_tech]["ProvidedValue"].sum()
                     prod_per_country[i] += annual_prod_sub_tech # adding annual sum for each year, for both subtechnologies together
                     
     prod_per_country=prod_per_country/len(time_range) #average to annual mean production
@@ -311,15 +319,15 @@ def scale_up(ds,tech):
     :param ds: DataArray of transformed runoff-to-hydro, per country
     :param tech: string
     """
-    prod_per_country = read_annual_prod(ds.country, tech)
+    prod_per_country = read_annual_prod(ds.country.values, tech)
     scaled_output = []
     for country in ds.country:
         ann_prod = prod_per_country.sel(country=country)
         day_by_day = ds.sel(country=country)
         nb_years = len(day_by_day.groupby("time.year").sum().year) #number of years in total
-        ann_prod_non_scaled = day_by_day.sum()/nb_years #average yearly values for this dataset
+        ann_prod_non_scaled = day_by_day[f"{tech}_GWh"].sum()/nb_years #average yearly values for this dataset
         scaled = day_by_day * (ann_prod.values/ann_prod_non_scaled.values) 
         scaled_output.append(scaled)
     scaled_output = xr.concat(scaled_output,dim="country")
-    scaled_output = scaled_output["country"] = list(ds.country)
+    scaled_output["country"] = list(ds.country.values)
     return scaled_output
