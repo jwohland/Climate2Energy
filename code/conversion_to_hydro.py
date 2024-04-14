@@ -8,6 +8,7 @@ import scipy
 import os
 import statsmodels.api as sm
 import datetime as dt
+import pwlf
 
 path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/lnd/hist/"
 
@@ -65,12 +66,20 @@ def open_era():
     If the file doesn't exist, the function executes a bash script that creates the necessary file
     """
     # ERA5 runoff for the ENTSO-e time range
-    file = glob.glob("../output/runoff_ERA5_2017_2022.nc")
+    file = glob.glob("../output/runoff_ERA5_2016_2022.nc")
     if file == []:
         subprocess.run(["bash", f"preprocess/preprocess_runoff_ERA5_for_transfer.sh"])
-        file = glob.glob("../output/runoff_ERA5_2017_2022.nc")
-    era5 = xr.open_dataset(file[0]).resample(time="D").sum() # daily values
+        file = glob.glob("../output/runoff_ERA5_2016_2022.nc")
+    era5 = xr.open_dataset(file[0])
     return era5
+
+def open_weekly(ds,time_range=[]):
+    if len(time_range) == 2:
+        ds.sel(time=slice(time_range[0]+pd.Timedelta(days=0),time_range[1]+pd.Timedelta(days=7))) # open the right time range
+    ds_weekly = ds.resample(time='1W',origin="start").sum()
+    ds_weekly['time'] = (ds_weekly.time - pd.Timedelta(days=6)) # set labels t0 match inflow
+    ds_weekly["time"] = ds_weekly.indexes['time'].normalize() # remove time component (sub-daily) of datetime
+    return ds_weekly
 
 def open_entsoe(tech):
     """
@@ -223,7 +232,7 @@ def lin_transfer(runoff_cesm2, calibration,tech):
     ::param calibration: ds including era5 runoff and entsoe inflow/ror to create linear transfer function
     :param tech:  string
     """
-    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(calibration.runoff,calibration[f"{tech}_GWh"]) #TODO: make sure it works for Nans (ignore them)
+    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(calibration.runoff,calibration[f"{tech}_GWh"]) 
     return slope*runoff_cesm2 + intercept
 
 def lin_transfer_no_b(runoff_cesm2, calibration,tech):
@@ -237,7 +246,7 @@ def lin_transfer_no_b(runoff_cesm2, calibration,tech):
     :param tech:  string
     """
     model = sm.OLS(calibration[f"{tech}_GWh"].values,calibration.runoff.values)
-    slope = model.fit().params #TODO: make sure it works for Nans (ignore them)
+    slope = model.fit().params 
     return slope*runoff_cesm2
 
 def condition_75th(ds, q, over_under):
@@ -256,24 +265,19 @@ def lin_transfer_all_countries(runoff_cesm2, calibration,tech,qu_75=np.nan):
     :kwarg qu_75: if not nan, 75th percentile of CESM2 runoff values, to separate between linear transfer types
     """
     transferred = []
-    for country in runoff_cesm2.country:
+    for country in calibration.country:
         calib_country = calibration.sel(country=country).dropna(dim="time") #linear regressions can't handle nans
         runoff_country = runoff_cesm2.sel(country=country)
         qu_75_country = qu_75.sel(country=country)
         if len(calib_country.runoff) > 0:
             if np.isnan(qu_75_country) == False: #linear transfer differentiated based on 75th percentile value 
-                # loop over the different statements (above or under 75th percentile) to get the two specialized datasets
-                ds_cond_on_q = {}
-                for statement in ["under","over"]: 
-                    runoff_cond = runoff_country.where(condition_75th(runoff_country, qu_75_country, statement),drop=True)
-                    calib_cond = calib_country.where(condition_75th(calib_country.runoff, qu_75_country, statement),drop=True)
-                    ds_cond_on_q[statement] = [runoff_cond, calib_cond]
-                # f(x) = ax for values under qu_75 
-                cesm2_transferred_no_b = lin_transfer_no_b(*ds_cond_on_q["under"],tech)
-                # f(x) = ax + b for values above qu_75
-                cesm2_transferred_with_b = lin_transfer(*ds_cond_on_q["over"],tech)
-                # concatenat the two
-                cesm2_transferred = xr.concat([cesm2_transferred_no_b,cesm2_transferred_with_b],dim="time").sortby("time")
+                # fit a linear regression with a kink at 75th percentile (under 75th percentile, intercept = 0)
+                x_kink = np.array([min(calib_country.runoff), qu_75_country.values, max(calib_country.runoff)])
+                # initialize piecewise linear fit
+                my_pwlf = pwlf.PiecewiseLinFit(calib_country.runoff,calib_country[f"{tech}_GWh"])
+                # fit the data with the specified break point and force to go through 0
+                my_pwlf.fit_with_breaks_force_points(x_kink,[0],[0])
+                cesm2_transferred = xr.DataArray(my_pwlf.predict(runoff_country),dims=["time"],coords ={"time":runoff_country.time})
             else: # no differentiating based on 75th percentile
                 # f(x) = ax + b                                     
                 cesm2_transferred = lin_transfer(runoff_country,calib_country,tech)
@@ -282,7 +286,7 @@ def lin_transfer_all_countries(runoff_cesm2, calibration,tech,qu_75=np.nan):
             transferred.append(runoff_country*0) #return dataarray of zeros
         
     transferred = xr.concat(transferred,dim="country")
-    transferred["country"] = list(runoff_cesm2.country.values)
+    transferred["country"] = list(calibration.country.values)
     return transferred
 
 def read_annual_prod(countries, tech):
