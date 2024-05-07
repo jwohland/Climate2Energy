@@ -201,7 +201,6 @@ def plot_difference_relative_heatmap(
         center=center,
         cbar_ax=cbar_ax,
         cbar_kws={"orientation": "horizontal", "label": "Difference to mean [%]"},
-        folder=folder,
     )
     ax.set_xlabel("")
     ax.set_ylabel("Combination of bc_realization and realization")
