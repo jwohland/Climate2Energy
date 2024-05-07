@@ -6,9 +6,6 @@ from gsee.climatedata_interface.interface import run_interface_from_dataset
 from utils import get_hub_heights, extrapolate_wind_xr, density_correct_winds
 
 
-out_path = "../output/"
-
-
 class Power:
     """
     Wind power  conversion class. Based on pre-computed power curves taken from
@@ -84,7 +81,7 @@ def update_attrs(ds, var, unitname, varname, long_varname):
     return ds
 
 
-def convert_winds(ds_wind, ds_rho, alpha, filename, density_correct=True):
+def convert_winds(ds_wind, ds_rho, ds_alpha, density_correct=True):
     """
     Convert 100m wind speeds to wind capacity factors for the three turbines.
 
@@ -105,21 +102,18 @@ def convert_winds(ds_wind, ds_rho, alpha, filename, density_correct=True):
         print(P.turbine_name)
         # Extrapolate to hub height
         hub_height = get_hub_heights(P.turbine_name)
-        ds_hub = extrapolate_wind_xr(ds_wind, 100, hub_height, alpha).to_dataset(
-            name="s_hub"
-        )
+        ds_hub = extrapolate_wind_xr(ds_wind, 100, hub_height, ds_alpha)
         # Density correction
         if density_correct:
             ds_hub = density_correct_winds(ds_hub, ds_rho, hub_height)
         # Apply power curve
         wind_power = xr.apply_ufunc(
-            P.power_conversion, ds_hub["s_hub"], vectorize=True, dask="allowed"
+            P.power_conversion, ds_hub["s_hub"], vectorize=True, dask="parallelized"
         ).to_dataset()
         wind_power = update_attrs(
             wind_power, "s_hub", "", "CF_wind", "normalized_wind_power_generation"
         )
         wind_power["turbine"] = P.turbine_name
-        wind_power.to_netcdf(out_path + P.turbine_name + "/" + filename)
         wind_power_list.append(wind_power)
     wind_power = xr.concat(
         wind_power_list,

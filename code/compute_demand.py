@@ -3,28 +3,43 @@ from utils import *
 import pandas as pd
 import demand_ninja  # todo currently is done in seperate environment. Can we integrate it?
 import subprocess
+import sys
 
 
-def open_xarray_demandninja(year=1990):
+def open_xarray_demandninja(year, bc_realization, scenario, realization):
     """
-    open full datasets with variables needed for demand calculation
+    Open full datasets with variables needed for demand calculation
+
+    Primary variables (i.e., temperature and radiation) are loaded as pre-computed
+    bias-corrected fields.
+
+    Secondary variables (i.e., humidity and 10m winds) are loaded as raw CESM2 output.
     """
-    path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/"
+    # Open primary variables that have been bias-corrected already
+    output_path = get_output_path(bc_realization, scenario, realization)
+    try:
+        ds_temp = xr.open_dataset(
+            f"{output_path}atmospheric_variables/bced_CESM2_temperature_{year}.nc"
+        )
+        ds_radiation = xr.open_dataset(
+            f"{output_path}atmospheric_variables/bced_CESM2_global-horizontal_{year}.nc"
+        )
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"Bias-corrected temperature and radiation input files do not exist {bc_realization} {scenario} {realization}"
+        )
+
     ds_atm = xr.open_dataset(
-        path
-        + "atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam.h6."
-        + str(year)
-        + "-01-01-03600.nc",
-        chunks={"lat": 10, "lon": 10, "time": 3000},
+        get_input_filename(scenario, realization, year),
+        chunks={"lat": 30, "lon": 30, "time": 3000},
     )
-    ds_atm = select_Europe(
-        zero_mean_longitudes(ds_atm[["FSDS", "TREFHT", "U10", "QREFHT"]])
-    )
+    ds_atm = select_Europe(zero_mean_longitudes(ds_atm[["U10", "QREFHT"]]))
     # Correct units so that they match with demandninja
     ds_atm["QREFHT"] *= 1000  # CESM2 gives kg/kg but demandninja wants g/kg
     ds_atm["U10"] *= (2 / 10) ** 0.14  # power law conversion from 10m to 2m
-    ds_atm["TREFHT"] -= 273.15  # convert from K to C
-    return ds_atm
+    ds_temp["time"] = ds_atm.time  # make sure same format of calendar used
+    ds_radiation["time"] = ds_atm.time
+    return xr.merge([ds_atm, ds_temp, ds_radiation])
 
 
 def pick_convert_demandninja(ds, ilat, ilon):
@@ -35,12 +50,11 @@ def pick_convert_demandninja(ds, ilat, ilon):
     df = ds_tmp.to_dataframe()
     df = df.rename(
         columns={
-            "FSDS": "radiation_global_horizontal",
-            "TREFHT": "temperature",
+            "global_horizontal": "radiation_global_horizontal",
             "U10": "wind_speed_2m",
             "QREFHT": "humidity",
         }
-    )
+    )  # temperature already has the correct name
     df.index = df.index.to_datetimeindex(
         unsafe=True
     )  # ninja needs time in datetimeindex format, unsafe is ok because non-leap year have been manually checked
@@ -303,7 +317,7 @@ def scale_heating_demand(target_share, df_current_share, df_demand):
     return df_demand
 
 
-def demand_conversion():
+def demand_conversion(bc_realization, scenario, realization):
     """
     Execute conversion from CESM2 output to heating and cooling demand over all historical years (1990 - 2010).
 
@@ -322,9 +336,9 @@ def demand_conversion():
     demand_params = parameter_fill_ninja(demand_params)  # fill missing values
     pop_density = compute_country_population_density()
     var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
-
-    for year in range(1990, 2010):
-        ds_ninja = open_xarray_demandninja(year)
+    output_path = get_output_path(bc_realization, scenario, realization)
+    for year in get_time_range(scenario):
+        ds_ninja = open_xarray_demandninja(year, bc_realization, scenario, realization)
         ds_ninja.load()  # loading here once speeds up the following loop
         result_list = []  # to store country level results
         for country in demand_params.index:
@@ -349,21 +363,22 @@ def demand_conversion():
             result_list.append(result)
         results = reformat_demandninja(pd.concat(result_list))
 
-        # todo should this be moved to run_all?
         # Save raw
         for demand_type in ["heating_demand", "cooling_demand"]:
-            file_suffix = demand_type + "_" + str(year)
-            results.loc[demand_type].to_csv("../output/" + file_suffix + ".csv")
-
-        # Save scaled heating
-        demand_type = "heating_demand"
-        file_suffix = demand_type + "_" + str(year) + "_fully_electrified"
-        # scale to target share
-        df_heating_scaled = scale_heating_demand(
-            1, compute_share_df(), results.loc[demand_type].copy()
-        )
-        df_heating_scaled.to_csv("../output/" + file_suffix + ".csv")
+            file_suffix = demand_type.replace("_", "-") + "_" + str(year)
+            results.loc[demand_type].to_csv(f"{output_path}output_variables/{file_suffix}.csv")
+            if demand_type == "heating_demand":
+                # Save scaled heating
+                file_suffix += "_fully-electrified"
+                # scale to target share
+                df_heating_scaled = scale_heating_demand(
+                    1, compute_share_df(), results.loc[demand_type].copy()
+                )
+                df_heating_scaled.to_csv(f"{output_path}output_variables/{file_suffix}.csv")
 
 
 if __name__ == "__main__":
-    demand_conversion()
+    scenario = str(sys.argv[1])
+    realization = str(sys.argv[2])
+    bc_realization = str(sys.argv[3])
+    demand_conversion(bc_realization, scenario, realization)

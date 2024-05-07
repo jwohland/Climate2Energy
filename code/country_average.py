@@ -48,7 +48,6 @@ def get_country_list():
 def cut_out_countries(ds):
     """
     Split global input dataset per country.
-    #todo add similar computation for offshore wind
     :param ds: dataset with new dimension country
     :return:
     """
@@ -76,7 +75,6 @@ def cut_out_countries_offshore(ds):
     shdf = read_EEZ_shapefile()
     ds_list = []
     for country in shdf.index:
-        print(country)
         shdf_tmp = shdf.loc[country]
         ds_country = ds.salem.roi(geometry=shdf_tmp.geometry, all_touched=True)
         ds_country["country"] = country
