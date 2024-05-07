@@ -210,7 +210,7 @@ def plot_difference_relative_heatmap(
 
 
 # todo move this into make_plots.py
-if __name__ == "main":
+if __name__ == "__main__":
     df_dict = compute_metrics_all_sims()
     ################
     # Means and relative difference due to variability
