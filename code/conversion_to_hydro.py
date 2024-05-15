@@ -272,19 +272,26 @@ def lin_transfer_all_countries(runoff_cesm2, calibration,tech,qu_75=np.nan):
         if len(calib_country.runoff) > 0:
             if np.isnan(qu_75_country) == False: #linear transfer differentiated based on 75th percentile value 
                 # fit a linear regression with a kink at 75th percentile (under 75th percentile, intercept = 0)
-                x_kink = np.array([min(calib_country.runoff), qu_75_country.values, max(calib_country.runoff)])
-                # initialize piecewise linear fit
-                my_pwlf = pwlf.PiecewiseLinFit(calib_country.runoff,calib_country[f"{tech}_GWh"])
-                # fit the data with the specified break point and force to go through 0
-                my_pwlf.fit_with_breaks_force_points(x_kink,[0],[0])
-                cesm2_transferred = xr.DataArray(my_pwlf.predict(runoff_country),dims=["time"],coords ={"time":runoff_country.time})
+                if qu_75_country.values > max(calib_country.runoff):
+                    # if entire sample is under total 75th percentile, just do regular linear regression with no intercept
+                    predicted = lin_transfer_no_b(runoff_country, calib_country,tech).values
+                elif min(calib_country.runoff) > qu_75_country.values: 
+                    # if entire sample is under total 75th percentile, just do regular linear regression with no intercept
+                    predicted = lin_transfer(runoff_country, calib_country,tech).values
+                else:
+                    x_kink = np.array([min(calib_country.runoff), qu_75_country.values, max(calib_country.runoff)])
+                    # initialize piecewise linear fit
+                    my_pwlf = pwlf.PiecewiseLinFit(calib_country.runoff,calib_country[f"{tech}_GWh"])
+                    # fit the data with the specified break point and force to go through 0
+                    my_pwlf.fit_with_breaks_force_points(x_kink,[0],[0])
+                    predicted = my_pwlf.predict(runoff_country)
+                cesm2_transferred = xr.DataArray(predicted,dims=["time"],coords ={"time":runoff_country.time})
             else: # no differentiating based on 75th percentile
                 # f(x) = ax + b                                     
                 cesm2_transferred = lin_transfer(runoff_country,calib_country,tech)
             transferred.append(cesm2_transferred)
         else:
             transferred.append(runoff_country*0) #return dataarray of zeros
-        
     transferred = xr.concat(transferred,dim="country")
     transferred["country"] = list(calibration.country.values)
     return transferred
