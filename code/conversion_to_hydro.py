@@ -19,9 +19,7 @@ def preprocess_cesm_discharge(ds):
     :param ds: 
     """
     ds = select_Europe(zero_mean_longitudes(ds)) # selecting area and settin long to -180,180
-    #ds = ds.resample(time="D").sum() #resample to daily values
     ds = ds.rename({"RIVER_DISCHARGE_OVER_LAND_LIQ":"discharge"})["discharge"].to_dataset() #renaming and selecting only river discharge
-    #ds = ds*3600 # to get output in mm/d
     return ds
 
 def quantile_75(ds):
