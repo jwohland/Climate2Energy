@@ -70,10 +70,10 @@ def open_era():
     start_year = 2015
     end_year = 2023
     # ERA5 discharge for the ENTSO-e time range
-    file = glob.glob(f"../output/discharge_ERA5_{start_year}_{end_year}.nc")
+    file = glob.glob(f"../output/discharge_ERA5_{start_year}-{end_year}.nc")
     if file == []:
         subprocess.run(["bash", f"../code/preprocess/preprocess_discharge_ERA5_for_transfer.sh"])
-        file = glob.glob(f"../output/discharge_ERA5_{start_year}_{end_year}.nc")
+        file = glob.glob(f"../output/discharge_ERA5_{start_year}-{end_year}.nc")
     era5 = xr.open_dataset(file[0])
     return era5
 
