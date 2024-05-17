@@ -188,34 +188,44 @@ def weighted_aggregation(ds_discharge,tech):
     df_jrc = pd.read_csv(file_path)
     country_list=df_jrc['country_code'].unique().tolist()
 
-    # Create the dataset
-    ds_C = xr.Dataset(
-        data_vars=dict(
-            normalized_capacity=(["lat", "lon", "country"],  np.zeros((len(lat),len(lon),len(country_list)))),
-        ),
-        coords=dict(
-            country=country_list,
-            lat=lat,
-            lon=lon
-        ),
-        attrs=dict(description="Installed hydro capacity (normalized per country)"),
-    )
+    file_normalized_capacity = glob.glob(f"../inputs/normalized_capacity_{tech}.nc")
 
-    # Define the type of power plants to consider
-    if tech == "ror":
-        type_code = ["HROR"]
-    elif tech == "inflow":
-        type_code = ["HDAM","HPHS"]
+    if file_normalized_capacity != []:
+        print("Loading normalized capacity "+ tech +" dataset")
+        ds_C = xr.open_dataset(file_normalized_capacity[0])
+    else:
+        # Define the type of power plants to consider
+        if tech == "ror":
+            type_code = ["HROR"]
+        elif tech == "inflow":
+            type_code = ["HDAM","HPHS"]
 
-    # Fill the dataset  
-    for country_code in country_list:
-        C = np.zeros((len(lat),len(lon)))
-        for ii in range(len(lon)): 
-            for jj in range(len(lat)):
-                C[jj,ii] = df_jrc["installed_capacity_MW"][(df_jrc["type"].isin(type_code)) & (df_jrc["country_code"]==country_code) & (lon_edge[ii]<df_jrc["lon"]) & (df_jrc["lon"]<lon_edge[ii+1]) & (lat_edge[jj]<df_jrc["lat"]) & (df_jrc["lat"]<lat_edge[jj+1])].sum()
+        # Create the dataset
+        print("Creating normalized capacity "+ tech +" dataset")
+        ds_C = xr.Dataset(
+            data_vars=dict(
+                normalized_capacity=(["lat", "lon", "country"],  np.zeros((len(lat),len(lon),len(country_list)))),
+            ),
+            coords=dict(
+                country=country_list,
+                lat=lat,
+                lon=lon
+            ),
+            attrs=dict(description="Installed hydro capacity (normalized per country)"),
+        )
 
-        ds_C.normalized_capacity.loc[{'country':country_code}] = C[:,:] / df_jrc["installed_capacity_MW"][(df_jrc["type"].isin(type_code)) & (df_jrc["country_code"]==country_code)].sum()
-        
+        # Fill the dataset  
+        for country_code in country_list:
+            C = np.zeros((len(lat),len(lon)))
+            for ii in range(len(lon)): 
+                for jj in range(len(lat)):
+                    C[jj,ii] = df_jrc["installed_capacity_MW"][(df_jrc["type"].isin(type_code)) & (df_jrc["country_code"]==country_code) & (lon_edge[ii]<df_jrc["lon"]) & (df_jrc["lon"]<lon_edge[ii+1]) & (lat_edge[jj]<df_jrc["lat"]) & (df_jrc["lat"]<lat_edge[jj+1])].sum()
+
+            ds_C.normalized_capacity.loc[{'country':country_code}] = C[:,:] / df_jrc["installed_capacity_MW"][(df_jrc["type"].isin(type_code)) & (df_jrc["country_code"]==country_code)].sum()
+            
+        ds_C.to_netcdf(f"../inputs/normalized_capacity_{tech}.nc")
+        print("Normalized capacity "+ tech +" dataset saved")
+
     # Calculate the discharge per country
     ds_w = []
     for country in country_list:
