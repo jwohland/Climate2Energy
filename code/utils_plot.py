@@ -18,6 +18,76 @@ tech_filter_dict = {
 }
 
 
+def get_tech_timeseries_dictionary(tech_filter_dict):
+    """
+
+    Open timeseries of both scenarios and all combinations for
+    the technologies defined in the input dictionary
+
+    :param tech_filter_dict:
+    :return:
+    """
+    df_dict = {}
+    for scenario in ["historical", "SSP370"]:
+        df_dict[scenario] = {}
+        for tech in tech_filter_dict.keys():
+            print(tech)
+            df_dict[scenario][tech] = {}
+            for bc_realization in ["A", "B", "C"]:
+                df_dict[scenario][tech][bc_realization] = {}
+                for realization in ["A", "B", "C"]:
+                    # Open csv file
+                    csv_path = (
+                        get_output_path(bc_realization, scenario, realization)
+                        + "output_variables/"
+                    )
+                    df = pd.concat(
+                        [
+                            pd.read_csv(filename, index_col=0)
+                            for filename in sorted(
+                                glob.glob(csv_path + tech_filter_dict[tech] + ".csv")
+                            )
+                        ],
+                        axis=1,
+                    )
+                    df_dict[scenario][tech][bc_realization][realization] = df
+    return df_dict
+
+
+def combine_wind(df_dict, location="onshore"):
+    """
+    Combine all onshore or offshore turbines by computing the mean over the
+    3 turbines
+    :param df_dict: dictionary with timeseries and this structure
+    :param location: "onshore" or "offshore"
+    :return:
+    """
+    for scenario in ["historical", "SSP370"]:
+        df_dict[scenario][f"Wind {location}"] = {}
+        for bc_realization in ["A", "B", "C"]:
+            df_dict[scenario][f"Wind {location}"][bc_realization] = {}
+            for realization in ["A", "B", "C"]:
+                df_onshore = (
+                    1
+                    / 3
+                    * (
+                        df_dict[scenario][f"SWT_120_{location}"][bc_realization][
+                            realization
+                        ]
+                        + df_dict[scenario][f"SWT_142_{location}"][bc_realization][
+                            realization
+                        ]
+                        + df_dict[scenario][f"E-126_{location}"][bc_realization][
+                            realization
+                        ]
+                    )
+                )
+                df_dict[scenario][f"Wind {location}"][bc_realization][
+                    realization
+                ] = df_onshore
+    return df_dict
+
+
 def compute_metrics_all_sims(metrics=["mean", "q05", "q95"]):
     """
     Computes different statistical metrics for all simulations and
