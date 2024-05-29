@@ -17,6 +17,19 @@ tech_filter_dict = {
     "cooling": "cooling*",
 }
 
+df_colors = pd.DataFrame(
+    {
+        "PV": "#d5c200",
+        "Wind onshore": "#518696",
+        "Wind offshore": "#215968",
+        "Hydropower (dam)": "#6782e4",
+        "Hydropower (ror)": "#00125e",
+        "heating": "#780015",
+        "cooling": "#007d95",
+    },
+    index=["color"],
+)
+
 
 def get_tech_timeseries_dictionary(tech_filter_dict):
     """
@@ -67,7 +80,7 @@ def combine_wind(df_dict, location="onshore"):
         for bc_realization in ["A", "B", "C"]:
             df_dict[scenario][f"Wind {location}"][bc_realization] = {}
             for realization in ["A", "B", "C"]:
-                df_onshore = (
+                df_mean = (
                     1
                     / 3
                     * (
@@ -84,7 +97,7 @@ def combine_wind(df_dict, location="onshore"):
                 )
                 df_dict[scenario][f"Wind {location}"][bc_realization][
                     realization
-                ] = df_onshore
+                ] = df_mean
     return df_dict
 
 
