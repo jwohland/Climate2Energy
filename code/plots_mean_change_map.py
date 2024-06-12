@@ -41,6 +41,41 @@ center_dict = {
     "United Kingdom": (-8.1, 50.71, 9.33),
 }
 
+iso_dict = {
+    "Albania": "AL",
+    "Austria": "AT",
+    "Bosnia and Herzegovina": "BA",
+    "Belgium": "BE",
+    "Bulgaria": "BG",
+    "Switzerland": "CH",
+    "Czech Republic": "CZ",
+    "Germany": "DE",
+    "Denmark": "DK",
+    "Estonia": "EE",
+    "Spain": "ES",
+    "Finland": "FI",
+    "France": "FR",
+    "Greece": "GR",
+    "Croatia": "HR",
+    "Hungary": "HU",
+    "Ireland": "IE",
+    "Italy": "IT",
+    "Lithuania": "LT",
+    "Latvia": "LV",
+    "Montenegro": "ME",
+    "Macedonia": "MK",
+    "Netherlands": "NL",
+    "Norway": "NO",
+    "Poland": "PL",
+    "Portugal": "PT",
+    "Romania": "RO",
+    "Serbia": "RS",
+    "Sweden": "SE",
+    "Slovenia": "SI",
+    "Slovakia": "SK",
+    "United Kingdom": "GB",
+}
+
 
 def spider_on_ax(df, ax, add_labels=False):
     """
@@ -291,7 +326,7 @@ def plot_map_roses(gridlines=True):
         ax.text(
             left + size / 2,
             bottom + size / 2,
-            country[:2],
+            iso_dict[country],
             horizontalalignment="center",
             verticalalignment="center",
             transform=ccrs.PlateCarree(),
