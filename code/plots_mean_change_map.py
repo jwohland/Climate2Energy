@@ -136,18 +136,20 @@ def plot_dummy_rose():
     df = pd.DataFrame(
         {
             "PV": 120,
-            "Wind": 90,
+            "Wind onshore": 90,
             "Wind offshore": 95,
             "Hydropower (dam)": 108,
             "Hydropower (ror)": 120,
-            "Heating": 50,
-            "Cooling": 500,
+            "heating": 50,
+            "cooling": 500,
         },
         index=["Change"],
     )
     df = df.transpose()
     df["Error_minus"] = [20, 5, 5, 8, 12, 10, 100]
     df["Error_plus"] = [10, 15, 10, 20, 20, 20, 500]
+    df["color"] = df_colors.transpose()
+    df.rename(index={"heating": "Heating", "cooling": "Cooling"}, inplace=True)
     # Make and save legend plot
     fig, ax = plt.subplots(
         figsize=(4, 4), subplot_kw={"projection": "polar", "frame_on": False}
