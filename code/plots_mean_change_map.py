@@ -218,8 +218,8 @@ def plot_roses():
         df_country = pd.concat([df_country, df_colors])
 
         # Align column naming to always start with capitals
-        df_country = df_country.rename(
-            columns={"heating": "Heating", "cooling": "Cooling"}
+        df_country.rename(
+            columns={"heating": "Heating", "cooling": "Cooling"}, inplace=True
         )
 
         # Make sure countries without offshore domain or AC are also plotted
@@ -231,6 +231,19 @@ def plot_roses():
             df_country["Cooling"]["Change"] = 100
             df_country["Cooling"]["Error_minus"] = 0
             df_country["Cooling"]["Error_plus"] = 0
+
+        # Sort dataframe in same order as in legend figure
+        df_country = df_country[
+            [
+                "PV",
+                "Wind onshore",
+                "Wind offshore",
+                "Hydropower (dam)",
+                "Hydropower (ror)",
+                "Heating",
+                "Cooling",
+            ]
+        ]
 
         fig, ax = plt.subplots(
             figsize=(4, 4), subplot_kw={"projection": "polar", "frame_on": False}
@@ -317,6 +330,7 @@ def plot_map_roses(gridlines=True):
     )
     plt.tight_layout()
     f.savefig("../plots/paper/roses/rose_map.jpeg", dpi=300)
+
 
 if __name__ == "__main__":
     plot_dummy_rose()
