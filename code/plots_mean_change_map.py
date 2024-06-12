@@ -146,8 +146,8 @@ def plot_dummy_rose():
         index=["Change"],
     )
     df = df.transpose()
-    df["Error_minus"] = [20, 5, 5, 8, 12, 10, 100]
-    df["Error_plus"] = [10, 15, 10, 20, 20, 20, 500]
+    df["Error_minus"] = [20, 5, 5, 8, 12, 10, 0]
+    df["Error_plus"] = [10, 15, 10, 20, 20, 20, 0]
     df["color"] = df_colors.transpose()
     df.rename(index={"heating": "Heating", "cooling": "Cooling"}, inplace=True)
     # Make and save legend plot
