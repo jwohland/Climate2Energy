@@ -141,7 +141,7 @@ def plot_dummy_rose():
             "Hydropower (dam)": 108,
             "Hydropower (ror)": 120,
             "heating": 50,
-            "cooling": 500,
+            "cooling": 200,
         },
         index=["Change"],
     )
