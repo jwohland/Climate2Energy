@@ -1,10 +1,15 @@
+#imports
+import xarray as xr
+import cftime
+from datetime import timedelta
 ## Open discharge, monthly values
+path = "/net/radon/climphys/FTP/lbloin/"
 print("Opening discharge data...")
-ds_discharge = xr.open_dataset('nc_files/discharge_monthly_1990-2015.nc')
+ds_discharge = xr.open_dataset(f'{path}discharge_monthly_1990-2015.nc')
 
 ## Open runoff, daily values
 print("Opening runoff data...")
-ds_runoff = xr.open_dataset("nc_files/runoff_daily_1990-2015.nc")
+ds_runoff = xr.open_dataset(f"{path}runoff_daily_1990-2015.nc")
 
 ## Do mean of runoff over latitude and longitude (One value per day, spatially aggregated)
 ds_runoff_mean = ds_runoff.mean(dim=["lon", "lat"])
@@ -43,4 +48,4 @@ ds_runoff_mean = ds_runoff_mean.broadcast_like(ds_discharge_daily)
 ## Calculate daily values of river discharge
 ds_discharge_daily['discharge'] =  ds_discharge_daily.discharge_monthly_ave * ds_runoff_mean.runoff_normalized
 
-ds_discharge_daily
+ds_discharge_daily.sel(bnds=0).to_netcdf("/net/xenon/climphys/lbloin/CESM2energy_data/discharge_1990-2015.nc")
