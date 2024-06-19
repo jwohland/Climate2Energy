@@ -8,10 +8,10 @@ import scipy
 import os
 import statsmodels.api as sm
 import datetime as dt
-import pwlf
+from scipy.optimize import minimize
+
 
 path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/rof/hist/"
-
 
 def preprocess_cesm_discharge(ds):
     """
@@ -44,22 +44,15 @@ def get_qu_75(ds):
 def open_discharge(year, end_year=np.nan):
     """
     Opens and preprocesses discharge data (see function preprocess_cesm_discharge) for a certain year. If end year is passed as an int, it opens all years between year and end_year (included)
-    :param year: int
-    :kwarg end_year: int
+    :param year: string
+    :kwarg end_year: string or nan (if only one year is needed)
     """
-    year =int(year) #make sure to have year in int
+    ds = xr.open_dataset("/net/xenon/climphys/lbloin/CESM2energy_data/discharge_1990-2015.nc")
     if np.isnan(end_year) == False: 
-        end_year = int(end_year) #make sure to have year in int
-        time_range = range(year,end_year+1)
+        ds = ds.sel(time=slice(year,end_year))
     else:
-        time_range = [year]
-    # opening all wanted files
-    files = []
-    for year in time_range:
-        for month in ["01","02","03","04","05","06","07","08","09","10","11","12"]:
-            files.append(path + f"b.e212.BHISTcmip6.f09_g17.1500.mosart.h0.{year}-{month}.nc")
-    discharge = xr.open_mfdataset(files,preprocess=preprocess_cesm_discharge,combine="nested")
-    return discharge.load()
+        ds = ds.sel(time=year)
+    return ds 
 
 def open_era():
     """
@@ -70,10 +63,10 @@ def open_era():
     start_year = 2015
     end_year = 2023
     # ERA5 discharge for the ENTSO-e time range
-    file = glob.glob(f"../output/discharge_ERA5_{start_year}-{end_year}.nc")
+    file = glob.glob(f"../output/discharge_ERA5_{start_year}_{end_year}.nc")
     if file == []:
         subprocess.run(["bash", f"../code/preprocess/preprocess_discharge_ERA5_for_transfer.sh"])
-        file = glob.glob(f"../output/discharge_ERA5_{start_year}-{end_year}.nc")
+        file = glob.glob(f"../output/discharge_ERA5_{start_year}_{end_year}.nc")
     era5 = xr.open_dataset(file[0])
     return era5
 
@@ -236,79 +229,31 @@ def weighted_aggregation(ds_discharge,tech):
 
     return ds_w
 
-def lin_transfer(discharge_cesm2, calibration,tech):
-    """ 
-    Creates a linear transfer function between entsoe inflow/ror and ERA5 discharge as f(x) = ax + b.
-
-    Applies this function to CESM2 discharge, to get its inflow/ror.
+def piecewise_linear(x, a1, b2, c2,q):
+    return np.piecewise(x, [x <= q, x > q], [lambda x: a1 * x, lambda x: b2 * x + c2])
     
-    :param discharge_cesm: discharge to be transferred to inflow/ror
-    ::param calibration: ds including era5 discharge and entsoe inflow/ror to create linear transfer function
-    :param tech:  string
-    """
-    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(calibration.discharge,calibration[f"{tech}_GWh"]) 
-    return slope*discharge_cesm2 + intercept
+def objective(params, x, y,q):
+    a1, b2, c2 = params
+    c2 = a1 * q - b2 * q  # Ensure continuity at x = 10
+    y_fit = piecewise_linear(x, a1, b2, c2,q)
+    return np.sum((y - y_fit) ** 2)
 
-def lin_transfer_no_b(discharge_cesm2, calibration,tech):
-    """ 
-    Creates a linear transfer function between ENTSO-e inflow/ror and ERA5 discharge as f(x) = ax (no b).
+def get_pwlf(calibration_ds,country,tech):
+    # get 75th percentile
+    q = get_qu_75(calibration_ds).sel(country=country).values
+    #calibration parameters
+    calib = calibration_ds.sel(country=country).dropna(dim="time")
+    x = calib.discharge.values
+    y = calib[f"{tech}_GWh"].values
+    #piece-wise linear fit 
+    initial_guess = [1, 1, 0]
+    bounds = [(0, None), (0, None), (None, None)]
+    result = minimize(objective, initial_guess, args=(x, y, q), bounds=bounds)
+    # linear fit parameters
+    a1_opt, b2_opt, _ = result.x
+    c2_opt = a1_opt * q - b2_opt * q 
 
-    Applies this function to CESM2 discharge, to get its inflow/ror.
-    
-    :param discharge_cesm: discharge to be transferred to inflow/ror
-    :param calibration: ds including era5 discharge and entsoe inflow/ror to create linear transfer function
-    :param tech:  string
-    """
-    model = sm.OLS(calibration[f"{tech}_GWh"].values,calibration.discharge.values)
-    slope = model.fit().params 
-    return slope*discharge_cesm2
-
-def condition_75th(ds, q, over_under):
-    if over_under == "over":
-        return ds > q
-    elif over_under == "under":
-        return ds < q
-
-def lin_transfer_all_countries(discharge_cesm2, calibration,tech,qu_75=np.nan):
-    """ 
-    Applies a linear transfer function across countries. If qu_75 is nan, it applies f(x) = ax + b for all values. Else, qu_75 is the value at which you differentiate: f(x) = ax for discharge < qu_75 (normal values), and f(x) = ax + b for discharge > qu_75 (spillover)
-    
-    :param discharge_cesm: discharge to be transferred to inflow/ror
-    :param calibration: ds including era5 discharge and entsoe inflow/ror to create linear transfer function
-    :param tech:  string
-    :kwarg qu_75: if not nan, 75th percentile of CESM2 discharge values, to separate between linear transfer types
-    """
-    transferred = []
-    for country in calibration.country:
-        calib_country = calibration.sel(country=country).dropna(dim="time") #linear regressions can't handle nans
-        discharge_country = discharge_cesm2.sel(country=country)
-        qu_75_country = qu_75.sel(country=country)
-        if len(calib_country.discharge) > 0:
-            if np.isnan(qu_75_country) == False: #linear transfer differentiated based on 75th percentile value 
-                # fit a linear regression with a kink at 75th percentile (under 75th percentile, intercept = 0)
-                if qu_75_country.values > max(calib_country.discharge):
-                    # if entire sample is under total 75th percentile, just do regular linear regression with no intercept
-                    predicted = lin_transfer_no_b(discharge_country, calib_country,tech).values
-                elif min(calib_country.discharge) > qu_75_country.values: 
-                    # if entire sample is under total 75th percentile, just do regular linear regression with no intercept
-                    predicted = lin_transfer(discharge_country, calib_country,tech).values
-                else:
-                    x_kink = np.array([min(calib_country.discharge), qu_75_country.values, max(calib_country.discharge)])
-                    # initialize piecewise linear fit
-                    my_pwlf = pwlf.PiecewiseLinFit(calib_country.discharge,calib_country[f"{tech}_GWh"])
-                    # fit the data with the specified break point and force to go through 0
-                    my_pwlf.fit_with_breaks_force_points(x_kink,[0],[0])
-                    predicted = my_pwlf.predict(discharge_country)
-                cesm2_transferred = xr.DataArray(predicted,dims=["time"],coords ={"time":discharge_country.time})
-            else: # no differentiating based on 75th percentile
-                # f(x) = ax + b                                     
-                cesm2_transferred = lin_transfer(discharge_country,calib_country,tech)
-            transferred.append(cesm2_transferred)
-        else:
-            transferred.append(discharge_country*0) #return dataarray of zeros
-    transferred = xr.concat(transferred,dim="country")
-    transferred["country"] = list(calibration.country.values)
-    return transferred
+    return [a1_opt, b2_opt, c2_opt], q
 
 def read_annual_prod(countries, tech):
     """

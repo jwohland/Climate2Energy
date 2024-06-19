@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 # parameters
-year = 2010
+year = "2010"
 technologies = ["ror","inflow"]
 rolling = {"ror":21,"inflow":3} # time to roll over - since inflow is weekly 3 weeks = 21 days
 
@@ -46,33 +46,34 @@ for tech in technologies:
     # rolling means
     discharge = discharge.rolling(time=rolling[tech],center=True).mean()
     calibration_ds = calibration_ds.rolling(time=rolling[tech],center=True).mean()
+    # make sure that only countries present in calibration_ds are present in discharge
+    discharge = discharge.sel(country=calibration_ds.country)
 
     print(f"All {tech} files opened and preprocessed. Conversion starting")
 
     # =====================================
     # === Step 2: Convert to hydropower ===
-    # =====================================
-    
-    # get 75th percentile of discharge (use ERA5 to get multiple years of data), for each country regardless of season
-    qu_75 = get_qu_75(calibration_ds)
-    if tech == "inflow":
-        qu_75 = qu_75*np.nan
-    # Treat seasons separately
-    season_transfer = []
-    for season in discharge.groupby("time.season"):
-        # get seasonal calibration data too
-        calibration_season = calibration_ds.groupby("time.season")[season[0]]
-        # apply by season over all grid cells
-        season_transfer.append(lin_transfer_all_countries(season[1].discharge,
-                                                          calibration_season,
-                                                          tech,
-                                                          qu_75 = qu_75
-                                                         ).to_dataset(name=f"{tech}_GWh")
-                              )
-    total_transfer = xr.concat(season_transfer,dim="time").sortby("time") # add seasons together and sort chunks by time
-    
-    # Scale up to fit yearly avearge production values
-    Scaled_total_transfer = scale_up(total_transfer,tech)
+    # =====================================     
+    transferred = []
+    for country in discharge.country.values:
+        [a1_opt, b2_opt, c2_opt],q =  get_pwlf(calibration_ds,country,tech)
+        transferred.append(piecewise_linear(
+                                            discharge.sel(country=country).discharge.values, 
+                                            a1_opt, 
+                                            b2_opt, 
+                                            c2_opt,
+                                            q
+                                        )
+                          )
+    transferred = xr.DataArray(
+        data=transferred,
+        dims=["country", "time"],
+        coords=dict(
+            country = discharge.country,
+            time=discharge.time,
+            ),
+        ).to_dataset(name=f"{tech}_GWh")
+    Scaled_total_transfer = scale_up(transferred,tech)
     
     print(f"Conversion for tech {tech} done. Now saving")
     # ===========================
