@@ -9,6 +9,7 @@ import os
 import statsmodels.api as sm
 import datetime as dt
 from scipy.optimize import minimize
+from historical_inflow import create_historical_inflow
 
 
 path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/rof/hist/"
@@ -47,12 +48,15 @@ def open_discharge(year, end_year=np.nan):
     :param year: string
     :kwarg end_year: string or nan (if only one year is needed)
     """
-    ds = xr.open_dataset("/net/xenon/climphys/lbloin/CESM2energy_data/discharge_1990-2015.nc")
     if np.isnan(end_year) == False: 
-        ds = ds.sel(time=slice(year,end_year))
+        time_range = range(year,end_year+1)
     else:
-        ds = ds.sel(time=year)
-    return ds 
+        time_range = [year]
+    dss = []
+    for year in time_range:
+        dss.append(xr.open_dataset(f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/discharge_{year}.nc"))
+    
+    return xr.concat(dss,dim="time").load()
 
 def open_era():
     """
@@ -95,7 +99,7 @@ def open_entsoe_ror():
     Opens the ENTSO-e data for the ror technology.
     """
     year_0 = 2017
-    year_N = 2023
+    year_N = 2022
 
     folder_path = "../inputs/entsoe_ror/"
     # read all the folders in the path. Each folder corresponds to a country
@@ -127,7 +131,10 @@ def open_entsoe_ror():
     return ds_ror
 
 def open_entsoe_inflow():
-    ds_inflow = glob.glob(
+    file = glob.glob("../inputs/entsoe_historic_inflow/historic_inflow.nc")
+    if file == []:
+        create_historical_inflow()
+    ds_inflow = xr.open_dataset(file)
 
     return ds_inflow
 
