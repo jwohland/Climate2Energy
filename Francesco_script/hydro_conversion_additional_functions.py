@@ -31,7 +31,7 @@ def aggregate(technologies):
 
 ## use convert to convert ds_discharge_input into ror/inflow, using the calibration dataset
 
-def convert(calibs,ds_discahrge_input,technologies):
+def convert(calibs,ds_discharge_input,technologies):
     final_hydro = {}
     def piecewise_linear(x, a1, b2, c2,q):
         return np.piecewise(x, [x <= q, x > q], [lambda x: a1 * x, lambda x: b2 * x + c2])
@@ -46,14 +46,14 @@ def convert(calibs,ds_discahrge_input,technologies):
                 'time': calibs[tech].time
             },
             data_vars={
-                'discharge': (['country', 'time'], ds_discahrge_input[tech].discharge.values.copy()),
+                'discharge': (['country', 'time'], ds_discharge_input[tech].discharge.values.copy()),
                 f'{tech}_GWh': (['country', 'time'], calibs[tech][f'{tech}_GWh'].values.copy()),
             }   
         ) 
         
         for country in calibs[tech].country.values:
             [a1_opt, b2_opt, c2_opt],q =  get_pwlf(calibs,tech,country)
-            ds_final[f'{tech}_GWh'].loc[dict(country=country)] =  piecewise_linear(ds_discahrge_input[tech].sel(country=country).discharge.values, a1_opt, b2_opt, c2_opt,q)
+            ds_final[f'{tech}_GWh'].loc[dict(country=country)] =  piecewise_linear(ds_discharge_input[tech].sel(country=country).discharge.values, a1_opt, b2_opt, c2_opt,q)
 
         final_hydro[tech] = ds_final
     return final_hydro
