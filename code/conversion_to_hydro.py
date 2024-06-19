@@ -134,7 +134,7 @@ def open_entsoe_inflow():
     file = glob.glob("../inputs/entsoe_historic_inflow/historic_inflow.nc")
     if file == []:
         create_historical_inflow()
-    ds_inflow = xr.open_dataset(file)
+    ds_inflow = xr.open_dataset(file[0])
 
     return ds_inflow
 
