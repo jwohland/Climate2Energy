@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 year_0 = 2016
 year_N = 2023
 
-start_date = datetime.datetime(year_0, 1, 4)
-end_date = datetime.datetime(year_N, 12, 25)
+start_date = datetime(year_0, 1, 4)
+end_date = datetime(year_N, 12, 25)
 
 dates = []
 weeks = []
@@ -53,7 +53,7 @@ ds_old = xr.Dataset(
 
 ## READ FILLING LEVELS ##
 for country in tqdm(country_list, desc='Reading filling levels per country'):
-    filename = 'Data/historic_inflow/' + country + '/Water Reservoirs and Hydro Storage Plants_201412290000-202412300000.csv'
+    filename = f'../inputs/entsoe_historic_inflow/{country}/Water Reservoirs and Hydro Storage Plants_201412290000-202412300000.csv'
     df_V = pd.read_csv(filename)
     V = []
     for year in range(year_0,year_N+1):
@@ -73,10 +73,10 @@ date_format = "%d.%m.%Y %H:%M"
 for country in tqdm(country_list, desc='Reading reservoir generation per country'):
     df_gen = pd.DataFrame(columns=['time','gen_GWh'])
     for year in range(year_0,year_N+1):
-        filename = 'Data/historic_inflow/' + country + '/Actual Generation per Production Type_'+str(year)+'01010000-'+str(year+1)+'01010000.csv'
+        filename = f'../inputs/entsoe_historic_inflow/{country}/Actual Generation per Production Type_{str(year)}01010000-{str(year+1)}01010000.csv'
         df_gen_y = pd.read_csv(filename)
         df_gen_y = df_gen_y.interpolate()
-        df_gen_y['time'] = df_gen_y['MTU'].apply(lambda x:  datetime.datetime.strptime(x[:15], date_format))
+        df_gen_y['time'] = df_gen_y['MTU'].apply(lambda x:  datetime.strptime(x[:15], date_format))
         df_gen_y['time_delta'] = (df_gen_y.time.shift(-1) - df_gen_y.time).dt.total_seconds()/3600
         df_gen_y['gen_GWh'] = df_gen_y['Hydro Water Reservoir  - Actual Aggregated [MW]'] * df_gen_y['time_delta']/1000 
         df_gen = pd.concat([df_gen, df_gen_y[['time', 'gen_GWh']]], axis=0)
@@ -120,4 +120,4 @@ variables_to_delete = ['V', 'gen', 'delta_V', 'ratio_dV_maxGen']
 for var in (variables_to_delete):
     ds = ds.drop_vars(var)
 
-ds.to_netcdf('historic_inflow.nc')
+ds.to_netcdf('../inputs/entsoe_historic_inflow/historic_inflow.nc')
