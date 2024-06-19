@@ -77,6 +77,18 @@ def bias_correct_dataset(ds, var, bc_realization, method="basic_quantile"):
     """
     ref_file = f"../output/bias_correction/Raw_ERA5_{var}.nc"
     mod_file = f"../output/bias_correction/{bc_realization}/Raw_CESM2_{var}_{bc_realization}.nc"
+    # making sure that the reference and model data is available
+    if glob.glob(ref_file) == []:
+        print(f"missing reference ground truth file {var}")
+        subprocess.run(["bash", f"preprocess/preprocess_{var}_ERA5.sh"])
+    if glob.glob(mod_file) == []:
+        print(f"missing historical model file for {var}")
+        subprocess.run(["bash", f"preprocess/preprocess_{var}_model_hist.sh"])
+        if var == "discharge":
+            subprocess.run(["bash", f"preprocess/preprocess_runoff_model_hist.sh"])
+            ds_discharge = xr.open_dataset(f'../output/hist_discharge_monthly.nc')
+            ds_runoff = xr.open_dataset(f"../output/hist_runoff.nc")
+            downscale(ds_discharge,ds_runoff,"hist_discharge") #downscale from monthly to daily discharge values using daily runoff 
     # open reference and model data
     reference = zero_mean_longitudes(xr.open_dataset(ref_file))
     model = zero_mean_longitudes(xr.open_dataset(mod_file))
