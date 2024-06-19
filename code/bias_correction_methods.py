@@ -6,6 +6,7 @@ from utils import *
 import numpy as np
 import pandas as pd
 from utils import interpolate_wind_xr, find_height
+from downscaling_discharge import downscale
 
 def bias_correct_per_loc(reference, model, da, method="basic_quantile"):
     """
@@ -38,6 +39,11 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
     if glob.glob(mod_file) == []:
         print(f"missing historical model file for {var}")
         subprocess.run(["bash", f"preprocess/preprocess_{var}_model_hist.sh"])
+        if var == "discharge":
+            subprocess.run(["bash", f"preprocess/preprocess_runoff_model_hist.sh"])
+            ds_discharge = xr.open_dataset(f'../output/hist_discharge_monthly.nc')
+            ds_runoff = xr.open_dataset(f"../output/hist_runoff.nc")
+            downscale(ds_discharge,ds_runoff,"hist_discharge") #downscale from monthly to daily discharge values using daily runoff 
     # open reference and model data
     reference = zero_mean_longitudes(xr.open_dataset(ref_file))
     model = zero_mean_longitudes(xr.open_dataset(mod_file))
