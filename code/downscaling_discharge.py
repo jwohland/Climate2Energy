@@ -4,9 +4,6 @@ import cftime
 from datetime import timedelta
 
 def downscale(ds_discharge,ds_runoff,save_info):
-    ## Open discharge, monthly values
-    
-    
     ## Do mean of runoff over latitude and longitude (One value per day, spatially aggregated)
     ds_runoff_mean = ds_runoff.mean(dim=["lon", "lat"])
     
@@ -44,6 +41,6 @@ def downscale(ds_discharge,ds_runoff,save_info):
     ## Calculate daily values of river discharge
     ds_discharge_daily['discharge'] =  ds_discharge_daily.discharge_monthly_ave * ds_runoff_mean.runoff_normalized
     
-    ds_discharge_daily.sel(bnds=0).to_netcdf(f"../output/{save_info}.nc")
+    ds_discharge_daily.to_netcdf(save_info)
     
     return None

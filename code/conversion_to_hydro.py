@@ -12,17 +12,6 @@ from scipy.optimize import minimize
 from historical_inflow import create_historical_inflow
 
 
-path = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/rof/hist/"
-
-def preprocess_cesm_discharge(ds):
-    """
-    Returns a dataset of river discharge for Europe with daily values
-    :param ds: 
-    """
-    ds = select_Europe(zero_mean_longitudes(ds)) # selecting area and settin long to -180,180
-    ds = ds.rename({"RIVER_DISCHARGE_OVER_LAND_LIQ":"discharge"})["discharge"].to_dataset() #renaming and selecting only river discharge
-    return ds
-
 def quantile_75(ds):
     """
     returns the value of the 75th percentile of dataset ds
@@ -42,7 +31,7 @@ def get_qu_75(ds):
             )
     return qu
 
-def open_discharge(year, end_year=np.nan):
+def open_discharge(year, end_year=np.nan,realization=1500,period="HIST"):
     """
     Opens and preprocesses discharge data (see function preprocess_cesm_discharge) for a certain year. If end year is passed as an int, it opens all years between year and end_year (included)
     :param year: string
@@ -54,7 +43,7 @@ def open_discharge(year, end_year=np.nan):
         time_range = [year]
     dss = []
     for year in time_range:
-        dss.append(xr.open_dataset(f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/discharge_{year}.nc"))
+        dss.append(xr.open_dataset(f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/{period}_{realization}_{year}_discharge.nc"))
     
     return xr.concat(dss,dim="time").load()
 
