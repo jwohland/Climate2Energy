@@ -9,5 +9,5 @@ for year in {1995..2015}
 
 done
 #do the summing up here since otherwise the mergetime gives double values for every jan 1
-cdo setattribute,runoff@units="mm/d" -daysum -mulc,3600 -mergetime ../output/runoff_*_mod.nc ../output/hist_runoff.nc
+cdo setattribute,runoff@units="mm/d" -dayavg -mulc,3600 -mergetime ../output/runoff_*_mod.nc ../output/hist_runoff.nc
 rm ../output/runoff_*_mod.nc
