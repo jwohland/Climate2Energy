@@ -7,7 +7,15 @@ import pandas as pd
 import numpy as np
 
 # parameters
-year = "2010"
+try: 
+    year = sys.argv[1]
+    realization = sys.argv[2]
+    period = sys.argv[3]
+except IndexError:
+    year = "2010"
+    realization = "1500"
+    period = "HIST"
+
 technologies = ["ror","inflow"]
 rolling = {"ror":21,"inflow":3} # time to roll over - since inflow is weekly 3 weeks = 21 days
 
@@ -17,7 +25,7 @@ rolling = {"ror":21,"inflow":3} # time to roll over - since inflow is weekly 3 w
 
 # === CESM2 discharge === 
 print("Open and bias correct CESM2 discharge")
-discharge_full = open_discharge(year) # you can pass end_year to it to open several years in row
+discharge_full = open_discharge(year,realization=realization,period=period) # you can pass end_year to it to open several years in row
 # Bias correction
 discharge_full = bias_correct_dataset(discharge_full, "discharge").to_dataset(name="discharge")  
 discharge_full = discharge_full.where(discharge_full.discharge > 0, other=0).convert_calendar("proleptic_gregorian") # to get numpy datetime (necessary for weekly resampling)
@@ -56,7 +64,7 @@ for tech in technologies:
     # =====================================     
     transferred = []
     for country in discharge.country.values:
-        [a1_opt, b2_opt, c2_opt],q =  get_pwlf(calibration_ds,country,tech)
+        [a1_opt, b2_opt, c2_opt],q =  get_pwlf(calibration_ds.sel(country=country).dropna(dim="time"),tech)
         transferred.append(piecewise_linear(
                                             discharge.sel(country=country).discharge.values, 
                                             a1_opt, 

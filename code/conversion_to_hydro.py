@@ -195,31 +195,31 @@ def weighted_aggregation(ds_discharge,tech):
 
     return ds_w
 
-def piecewise_linear(x, a1, b2, c2,q):
-    return np.piecewise(x, [x <= q, x > q], [lambda x: a1 * x, lambda x: b2 * x + c2])
+def piecewise_linear(x, a1, b1, a2, b2,q):
+    return np.piecewise(x, [x <= q, x > q], [lambda x: a1 * x + b1, lambda x: a2 * x + b2])
     
 def objective(params, x, y,q):
-    a1, b2, c2 = params
-    c2 = a1 * q - b2 * q  # Ensure continuity at x = 10
-    y_fit = piecewise_linear(x, a1, b2, c2,q)
+    a1, b1, a2,  = params
+    b2 = a1 * q + b1 - a2 * q  # Ensure continuity at x = 10
+    y_fit = piecewise_linear(x, a1, b1, a2, b2,q)
     return np.sum((y - y_fit) ** 2)
 
-def get_pwlf(calibration_ds,country,tech):
+def get_pwlf(calibration_ds,tech):
     # get 75th percentile
-    q = get_qu_75(calibration_ds).sel(country=country).values
+    q = get_qu_75(calibration_ds).values
     #calibration parameters
-    calib = calibration_ds.sel(country=country).dropna(dim="time")
+    calib = calibration_ds.dropna(dim="time")
     x = calib.discharge.values
     y = calib[f"{tech}_GWh"].values
     #piece-wise linear fit 
-    initial_guess = [1, 1, 0]
-    bounds = [(0, None), (0, None), (None, None)]
+    initial_guess = [1, 0, 1]  # [a1, b1, a2]
+    bounds = [(0, None), (0, 0), (0, None)]
     result = minimize(objective, initial_guess, args=(x, y, q), bounds=bounds)
     # linear fit parameters
-    a1_opt, b2_opt, _ = result.x
-    c2_opt = a1_opt * q - b2_opt * q 
+    a1_opt, b1_opt, a2_opt = result.x
+    b2_opt = a1_opt * q + b1_opt - a2_opt * q 
 
-    return [a1_opt, b2_opt, c2_opt], q
+    return [a1_opt, b1_opt, a2_opt, b2_opt], q
 
 def read_annual_prod(countries, tech):
     """
