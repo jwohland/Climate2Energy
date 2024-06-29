@@ -213,7 +213,7 @@ def get_pwlf(calibration_ds,tech):
     y = calib[f"{tech}_GWh"].values
     #piece-wise linear fit 
     initial_guess = [1, 0, 1]  # [a1, b1, a2]
-    bounds = [(0, None), (0, 0), (0, None)]
+    bounds = [(0, None), (None, 0), (0, None)]
     result = minimize(objective, initial_guess, args=(x, y, q), bounds=bounds)
     # linear fit parameters
     a1_opt, b1_opt, a2_opt = result.x
