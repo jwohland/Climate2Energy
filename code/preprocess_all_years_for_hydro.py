@@ -11,7 +11,10 @@ def preprocess_cesm(ds,var="discharge"):
     """
     ds = select_Europe(zero_mean_longitudes(ds)) # selecting area and settin long to -180,180
     if var == "discharge":
-        ds = ds.rename({"RIVER_DISCHARGE_OVER_LAND_LIQ":"discharge"})["discharge"].to_dataset() #renaming and selecting only river discharge
+        land_dis = xr.where(ds.RIVER_DISCHARGE_OVER_LAND_LIQ > 0, ds.RIVER_DISCHARGE_OVER_LAND_LIQ, 0)
+        ocean_dis = xr.where(ds.TOTAL_DISCHARGE_TO_OCEAN_LIQ > 0, ds.TOTAL_DISCHARGE_TO_OCEAN_LIQ, 0)
+        ds = (land_dis+ocean_dis)
+        ds = ds.where(ds > 0).to_dataset(name="discharge") #renaming and selecting only river discharge
     elif var == "runoff":
         ds = ds.rename({"QRUNOFF":"runoff"})["runoff"].to_dataset() #renaming and selecting only runoff
     else:
@@ -26,9 +29,9 @@ periods = {"HIST":{"time_range":range(1995,2015),
            "SSP370": {"time_range": range(2080,2100),
                       "realizations":["1500","0600","0900"],
                      },
-           "SSP245": {"time_range": range(2080,2100),
-                      "realizations":["1500"],
-                     },
+           # "SSP245": {"time_range": range(2080,2100),
+           #            "realizations":["1500"],
+           #           },
           }
 out_path = f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/"
 
@@ -55,4 +58,4 @@ for period in periods:
         # saving individual years
         downscaled = xr.open_dataset(f"{out_path}{period}_{realization}_discharge.nc")
         for year in tqdm(periods[period]["time_range"]):
-            downscaled.sel(time=str(year)).to_netcdf(f"{out_path}{period}_{realization}_{year}_discharge.nc")
+            downscaled.sel(time=str(year)).to_netcdf(f"{out_path}{period}_{realization}_{year}_discharge_tot.nc")
