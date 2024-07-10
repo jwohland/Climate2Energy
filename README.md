@@ -55,7 +55,7 @@ Save the file into the `inputs` folder.
 This file contains the location and the installed capacity (nominal power of the turbine) of hydropower plants (run-of-river, reservoir, pumped-hydro) in Europe.
 
 ### Download run-of-river generation from ENTSO-e Transparency platform
-On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download run-of-river generation per each year per each country:
+On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download reservoir filling levels per each year per each country:
 - Go to Generation>Actual generation per production type
 - Select "Country" and in "Area" select the desired country.
 - In "Production Type" select only "Hydro Run-of-river and poundage".
@@ -112,6 +112,30 @@ After installation of the environments and download of the required additional i
 ```
 bash - l run_all.sh
 ```
+=======
+### Download reservoir filling level and reservoir generation from ENTSO-e Transparency platform
+#### Reservoir filling level
+On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download run-of-river generation per each country:
+- Go to Generation>Water Reservoirs and Hydro Storage Plants
+- Select "Country" and in "Area" select the desired country.
+- Download the csv at Export Data>Water Reservoirs and Hydro Storage Plants (CSV).
+The file name should have this format: "Water Reservoirs and Hydro Storage Plants_201412290000-202412300000.csv".
+#### Reservoir generation
+On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download reservoir generation per each year per each country:
+- Go to Generation>Actual generation per production type
+- Select "Country" and in "Area" select the desired country.
+- In "Production Type" select only "Hydro Water Reservoir".
+- Download the full year at Export Data>Actual Generation per Production Type (Year,CSV).
+The file name should have this format: "Actual Generation per Production Type_201501010000-201601010000.csv".
+
+#### Save the downloaded file into the input folder
+With Reservoir filling levels and Reservoir generation it will be possible to compute the historical energy inflow in reservoirs.
+
+In the folder `inputs`, create the folder `entsoe_inflow`. In this folder, create one folder per country, named with the country code, e.g. `AT`.
+Save the single reservoir filling level csv file downloaded (one file for all the years) and all the Reservoir generation files (one file per year, so multiple files) from ENTSO-e into the folder of the corresponding country.
+
+
+### Code information
 
 ## Climate model data (NEEDS UPDATING)
 Necessary variables are: Wind Speed (U and V) at turbine level (~100m), surface short-wave downwelling radiation (RSDS), and surface temperature (TREFHT).
