@@ -8,11 +8,13 @@ import numpy as np
 
 # parameters
 try: 
-    year = sys.argv[1]
-    realization = sys.argv[2]
-    period = sys.argv[3]
+    year = eval(sys.argv[1])
+    end_year = eval(sys.argv[2])
+    realization = sys.argv[3]
+    period = sys.argv[4]
 except IndexError:
     year = "2010"
+    end_year = "2014"
     realization = "1500"
     period = "HIST"
 
@@ -25,7 +27,7 @@ rolling = {"ror":21,"inflow":3} # time to roll over - since inflow is weekly 3 w
 
 # === CESM2 discharge === 
 print("Open and bias correct CESM2 discharge")
-discharge_full = open_discharge(year,realization=realization,period=period) # you can pass end_year to it to open several years in row
+discharge_full = open_discharge(year,end_year = end_year,realization=realization,period=period) # you can pass end_year to it to open several years in row
 # Bias correction
 discharge_full = bias_correct_dataset(discharge_full, "discharge").to_dataset(name="discharge")  
 discharge_full = discharge_full.where(discharge_full.discharge > 0, other=0).convert_calendar("proleptic_gregorian") # to get numpy datetime (necessary for weekly resampling)
@@ -38,9 +40,9 @@ for tech in technologies:
     print(f"Open ERA5 discharge and ENTSO-e data for tech {tech}")
     # ENTSO-e
     calibration_ds = open_entsoe(tech) # conversion data set for inflows/ror
-    [start_year,end_year] = calibration_ds.groupby("time.year").sum().year[[0,-1]].values
+    [start,end] = calibration_ds.groupby("time.year").sum().year[[0,-1]].values
     # ERA5
-    era_discharge = open_era().sel(time=slice(str(start_year),str(end_year)))
+    era_discharge = open_era().sel(time=slice(str(start),str(end)))
     if tech == "inflow":
         time_range = calibration_ds.time[[0,-1]].values # find values of start and end date, to open era5 weekly correctly
         era_discharge = open_weekly(era_discharge,time_range=time_range) # get era5 in weekly resolution
@@ -64,12 +66,13 @@ for tech in technologies:
     # =====================================     
     transferred = []
     for country in discharge.country.values:
-        [a1_opt, b2_opt, c2_opt],q =  get_pwlf(calibration_ds.sel(country=country).dropna(dim="time"),tech)
+        [a1_opt, b1_opt, a2_opt, b2_opt], q =  get_pwlf(calibration_ds.sel(country=country).dropna(dim="time"),tech)
         transferred.append(piecewise_linear(
                                             discharge.sel(country=country).discharge.values, 
                                             a1_opt, 
-                                            b2_opt, 
-                                            c2_opt,
+                                            b1_opt,
+                                            a2_opt, 
+                                            b2_opt,
                                             q
                                         )
                           )
@@ -87,5 +90,5 @@ for tech in technologies:
     # ===========================
     # === Step 3: Save output ===
     # ===========================
-    store_as_pandas_dataframe(Scaled_total_transfer[f"{tech}_GWh"], f"hydro_{tech}_{year}")
+    store_as_pandas_dataframe(Scaled_total_transfer[f"{tech}_GWh"], f"hydro_{tech}_{year}-{end_year}_{realization}_{period}")
     
