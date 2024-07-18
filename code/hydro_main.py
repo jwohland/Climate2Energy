@@ -11,11 +11,13 @@ try:
     year = eval(sys.argv[1])
     end_year = eval(sys.argv[2])
     realization = sys.argv[3]
-    period = sys.argv[4]
+    bc_realization = sys.argv[4]
+    period = sys.argv[5]
 except IndexError:
-    year = "2010"
-    end_year = "2014"
+    year = 2010
+    end_year = 2014
     realization = "1500"
+    bc_realization = "1500"
     period = "HIST"
 
 technologies = ["ror","inflow"]
@@ -26,32 +28,45 @@ rolling = {"ror":21,"inflow":3} # time to roll over - since inflow is weekly 3 w
 # =====================================================
 
 # === CESM2 discharge === 
-print("Open and bias correct CESM2 discharge")
-discharge_full = open_discharge(year,end_year = end_year,realization=realization,period=period) # you can pass end_year to it to open several years in row
+print("Open CESM2 and ERA5 discharge")
+# open CESM2 discharge
+discharge_full = open_discharge(year,
+                                end_year = end_year,
+                                realization=realization,
+                                period=period)
+# open CESM2 discharge HIST, for bias correction
+discharge_full_for_bc = open_discharge(1995,
+                                end_year = 2014,
+                                realization=bc_realization,
+                                period="HIST")
+# opening ERA5 discharge for 1995-2015, for bias correction and for 2016-2023 for run-of-river calibration
+era5_discharge_full = open_era(discharge_full.lat,discharge_full.lon) 
+print("Bias correct CESM2")
 # Bias correction
-discharge_full = bias_correct_dataset(discharge_full, "discharge").to_dataset(name="discharge")  
-discharge_full = discharge_full.where(discharge_full.discharge > 0, other=0).convert_calendar("proleptic_gregorian") # to get numpy datetime (necessary for weekly resampling)
+discharge_full = bias_correct_hydro(discharge_full.discharge, 
+                                    era5_discharge_full.sel(time=slice("1995","2015")).discharge.load(), 
+                                    discharge_full_for_bc.discharge
+                                   ).to_dataset(name="discharge").convert_calendar("proleptic_gregorian") # to get numpy datetime (necessary for weekly resampling)
+
 # aggregation
 for tech in technologies:
-    print(f"Aggregate CESM for tech {tech}")
-    discharge = weighted_aggregation(discharge_full,tech)
-
-    # === ERA5 discharge and ENTSO-e data (2017-2022) === 
-    print(f"Open ERA5 discharge and ENTSO-e data for tech {tech}")
+    print(f"Aggregate CESM2 and ERA5 for tech {tech}")
+    discharge = weighted_aggregation(discharge_full,tech).discharge
+    era5_discharge = weighted_aggregation(era5_discharge_full,tech)
+    
+    # === calibration data (ENTSO-e and ERA5 (2016-2023) === 
+    print(f"Open ENTSO-e data for tech {tech}")
     # ENTSO-e
     calibration_ds = open_entsoe(tech) # conversion data set for inflows/ror
     [start,end] = calibration_ds.groupby("time.year").sum().year[[0,-1]].values
-    # ERA5
-    era_discharge = open_era().sel(time=slice(str(start),str(end)))
+    era_discharge_for_calibration = era5_discharge.sel(time=slice(str(start),str(end)))["discharge"].sel(country=calibration_ds.country) #for calibration, we only use the years available from ENTSO-e for ERA5
     if tech == "inflow":
         time_range = calibration_ds.time[[0,-1]].values # find values of start and end date, to open era5 weekly correctly
-        era_discharge = open_weekly(era_discharge,time_range=time_range) # get era5 in weekly resolution
+        era_discharge_for_calibration = open_weekly(era_discharge_for_calibration,time_range=time_range) # get era5 in weekly resolution
         discharge = open_weekly(discharge) # get cesm2 in weekly resolution
-    #weighted aggregation, and making sure discharge and generation have same country list
-    era_weighted = weighted_aggregation(era_discharge,tech)["discharge"].sel(country=calibration_ds.country)
     if tech =="ror":
-        era_weighted["time"] = calibration_ds.time #ensuring same time stamp (discharge resamples to 11.30 every day and not 00.00)
-    calibration_ds["discharge"] = era_weighted
+        era_discharge_for_calibration["time"] = calibration_ds.time #ensuring same time stamp (discharge resamples to 11.30 every day and not 00.00)
+    calibration_ds["discharge"] = era_discharge_for_calibration
 
     # rolling means
     discharge = discharge.rolling(time=rolling[tech],center=True).mean()
@@ -68,7 +83,7 @@ for tech in technologies:
     for country in discharge.country.values:
         [a1_opt, b1_opt, a2_opt, b2_opt], q =  get_pwlf(calibration_ds.sel(country=country).dropna(dim="time"),tech)
         transferred.append(piecewise_linear(
-                                            discharge.sel(country=country).discharge.values, 
+                                            discharge.sel(country=country).values, 
                                             a1_opt, 
                                             b1_opt,
                                             a2_opt, 

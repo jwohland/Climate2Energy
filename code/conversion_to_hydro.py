@@ -1,15 +1,14 @@
 from utils import zero_mean_longitudes, select_Europe
 import glob
-import subprocess
 import xarray as xr
 import pandas as pd
 import numpy as np
 import scipy
 import os
-import statsmodels.api as sm
 import datetime as dt
 from scipy.optimize import minimize
 from historical_inflow import create_historical_inflow
+from bias_correction_methods import bias_correct_hydro
 
 
 def quantile_75(ds):
@@ -45,22 +44,41 @@ def open_discharge(year, end_year=np.nan,realization=1500,period="HIST"):
     for year in time_range:
         dss.append(xr.open_dataset(f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/{period}_{realization}_{year}_discharge.nc"))
     
-    return xr.concat(dss,dim="time").load()
+    return xr.concat(dss,dim="time").load().convert_calendar("proleptic_gregorian") # new calendar to get numpy datetime (necessary for weekly resampling)
 
-def open_era():
+def preprocess_era(ds,cesm_lat,cesm_lon):
     """
-    Opens ERA5 discharge for 2017-2022, to use for the transfer function between inflow/ror and discharge.
+    changes variable names to fit CESM2 standard, and changes lat order to go from 90->-90 to -90->90
+    :param ds: dataset
+    :param cesm_lat: latitude grid of CESM2, 
+    """
+    ds = ds.rename({"latitude":"lat","longitude":"lon","dis24":"discharge"})
+    ds=ds.reindex(lat=ds.lat[::-1])
+    ds_co = ds.coarsen(lat=10,lon=10, boundary="trim").sum()
+    #ds_co = select_Europe(ds_co)
+    # since the ERA5 grid is exactly 10 higher resolution than CESM2, the two grids should have the same length after selecting Europe. However, there might be slight differences in the absolute values of the grids (lat = 30.2 instead of 30.25) due to the coarsening. That is why we assign the lat and lon values of CESM2 here.
+    if len(ds_co.lat) == len(cesm_lat) and len(ds_co.lon) == len(cesm_lon):
+        ds_co["lat"] = cesm_lat
+        ds_co["lon"] = cesm_lon
+    else:
+        print("Error: CESM2 and ERA5 grid are not same length")
+    return ds_co
 
+def open_era(cesm_lat,cesm_lon):
+    """
+    Opens ERA5 discharge, and preprocesses it to fit the naming conventions 
     If the file doesn't exist, the function executes a bash script that creates the necessary file
     """
-    start_year = 2015
-    end_year = 2023
     # ERA5 discharge for the ENTSO-e time range
-    file = glob.glob(f"../output/discharge_ERA5_{start_year}_{end_year}.nc")
+    file = glob.glob(f"../output/discharge_ERA5.nc")
+    def preprocess_era_here(ds):
+        return preprocess_era(ds,cesm_lat,cesm_lon)
     if file == []:
-        subprocess.run(["bash", f"../code/preprocess/preprocess_discharge_ERA5_for_transfer.sh"])
-        file = glob.glob(f"../output/discharge_ERA5_{start_year}_{end_year}.nc")
-    era5 = xr.open_dataset(file[0])
+        files = [f"/net/xenon/climphys/lbloin/CESM2energy_data/ERA5_discharge/discharge_{year}.nc" for year in range(1995,2023)] #historical+calbration ERA5 data
+        era5 = xr.open_mfdataset(files,preprocess=preprocess_era_here,combine="nested")
+        era5.to_netcdf(f"../output/discharge_ERA5.nc")
+    else:
+        era5 = xr.open_dataset(file[0])
     return era5
 
 def open_weekly(ds,time_range=[]):

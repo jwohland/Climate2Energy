@@ -23,6 +23,25 @@ def bias_correct_per_loc(reference, model, da, method="basic_quantile"):
         bc = BiasCorrection(pd.Series(reference), pd.Series(model), pd.Series(da))
         return bc.correct(method=method)
 
+def bias_correct_hydro(ds, ref, hist, method="basic_quantile"):
+    """
+    bias correction for hydro. bias corrects over time for each country present in the thre datasets
+    
+    """
+    corrected = xr.apply_ufunc(
+        bias_correct_per_loc,
+        ref,
+        hist,
+        ds,
+        vectorize=True,
+        input_core_dims=[["time"], ["time"], ["time"]],
+        exclude_dims=set(("time",)),
+        output_core_dims=[["time"]],
+        kwargs={"method": method},
+    )
+    corrected["time"] = ds["time"]  # to restore time coordinate in dataarray
+    return corrected.squeeze()
+
 
 def bias_correct_dataset(ds, var, method="basic_quantile"):
     """
@@ -39,11 +58,6 @@ def bias_correct_dataset(ds, var, method="basic_quantile"):
     if glob.glob(mod_file) == []:
         print(f"missing historical model file for {var}")
         subprocess.run(["bash", f"preprocess/preprocess_{var}_model_hist.sh"])
-        if var == "discharge":
-            subprocess.run(["bash", f"preprocess/preprocess_runoff_model_hist.sh"])
-            ds_discharge = xr.open_dataset(f'../output/hist_discharge_monthly.nc')
-            ds_runoff = xr.open_dataset(f"../output/hist_runoff.nc")
-            downscale(ds_discharge,ds_runoff,"../output/hist_discharge") #downscale from monthly to daily discharge values using daily runoff 
     # open reference and model data
     reference = zero_mean_longitudes(xr.open_dataset(ref_file))
     model = zero_mean_longitudes(xr.open_dataset(mod_file))
