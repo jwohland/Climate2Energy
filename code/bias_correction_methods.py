@@ -6,7 +6,6 @@ from utils import *
 import numpy as np
 import pandas as pd
 from utils import interpolate_wind_xr, find_height
-from downscaling_discharge import downscale
 
 
 def bias_correct_per_loc(reference, model, da, method="basic_quantile"):
