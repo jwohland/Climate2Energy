@@ -2,13 +2,56 @@ import numpy as np
 import xarray as xr
 import warnings
 from os import makedirs
+import dask
 
+dask.config.set({"array.slicing.split_large_chunks": False})
 
-DATA_PATH = "/net/meso/climphys/cesm212/b.e212.BHISTcmip6.f09_g17.1500/archive/"
+# Dictionary that connects scenarios (historical, SSP370, SSP245), realization names (A,B,C) and identifiers used in CESM2 output (4 digit numbers, e.g., "1000")
+CESM2_REALIZATION_DICT = {
+    "historical": {"A": "1500", "B": "1000", "C": "1200"},
+    "SSP370": {"A": "1500", "B": "0600", "C": "0900"},
+    "SSP245": {"A": "1500"},
+}
 
 
 def select_Europe(ds):
     return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
+
+
+def get_time_range(scenario):
+    """
+    Start and end years of the different scenarios covered in this analysis
+    :param scenario:
+    :return:
+    """
+    range_dict = {
+        "historical": range(1995, 2015),
+        "SSP370": range(2080, 2100),
+        "SSP245": range(2080, 2100),
+    }
+    return range_dict[scenario]
+
+
+def get_input_filename(scenario, realization, year):
+    """
+    Provide the path to the non-bias corrected CESM2 atmospheric variable files
+    :param scenario:
+    :param realization:
+    :param year:
+    :return:
+    """
+    shared_path = f"/net/meso/climphys/cesm212/"
+    tmp = "b.e212.B"
+    if scenario == "historical":
+        tmp += "HIST"
+    else:
+        tmp += scenario  # i.e., + SSP370 or SSP245
+    tmp += "cmip6.f09_g17."
+    tmp += CESM2_REALIZATION_DICT[scenario][realization]
+    assembled_path = (
+        f"{shared_path}{tmp}/archive/atm/hist/{tmp}.cam.h6.{year}-01-01-03600.nc"
+    )
+    return assembled_path
 
 
 def find_height(ds):
@@ -51,7 +94,7 @@ def get_hub_heights(turbine_name):
     return hub_height_dict[turbine_name]
 
 
-def open_wind_solar(year, test_data=False):
+def open_wind_solar(year, scenario, realization, test_data=False):
     """
     Open the data needed for wind and solar energy calculation and output
     as xr.Datasets.
@@ -66,67 +109,45 @@ def open_wind_solar(year, test_data=False):
             - global horizontal radiation
             - temperature
     """
-    data_path = f"{DATA_PATH}atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam"
+    chunks = {"lat": 30, "lon": 30, "lev": 5, "ilev": 5, "time": 3000}
     # Wind
-    ds = xr.open_dataset(f"{data_path}.h6.{year}-01-01-03600.nc")
-    ds = select_Europe(
-        zero_mean_longitudes(ds).isel(lev=slice(30, 32))  # lowermost 2 levels
+    ds_atm = select_Europe(
+        zero_mean_longitudes(
+            xr.open_dataset(
+                get_input_filename(scenario, realization, year), chunks=chunks
+            )
+        )
     )
-    ds_wind = np.sqrt(ds["U"] ** 2 + ds["V"] ** 2)
+    # Keep only few timesteps for test data
+    if test_data:
+        ds_atm = ds_atm.isel(time=slice(0, 10))
+    ds_wind = ds_atm.isel(lev=slice(30, 32))  # lowermost 2 levels
+    ds_wind = np.sqrt(ds_wind["U"] ** 2 + ds_wind["V"] ** 2)
     ds_wind = ds_wind.to_dataset(
         name="S"
     )  # call winds S here because they are still at model level
-    ds_wind["Z3"] = ds["Z3"]
+    ds_wind["Z3"] = ds_atm["Z3"]
     ds_wind = find_height(ds_wind)
 
+    # air density
+    ds_rho = ds_atm.isel(lev=slice(29, 32), ilev=slice(29, 33))[
+        ["RHO_CLUBB", "Z3"]
+    ]  # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev
+    # we here select slices that contain hub height pressure on the GCM grid
+
     # Solar
-    ds = xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc")
-    rad = zero_mean_longitudes(ds).rename({"FSDS": "global_horizontal"})[
+    ds_PV = rad = ds_atm.rename({"FSDS": "global_horizontal"})[
         "global_horizontal"
-    ]
-    t = zero_mean_longitudes(xr.open_dataset(data_path + f".h6.{year}-01-01-03600.nc"))[
-        "TREFHT"
-    ]
-    ds_PV = rad.to_dataset()
-    ds_PV["temperature"] = t
+    ].to_dataset()
+    ds_PV["temperature"] = ds_atm["TREFHT"]
     ds_PV = temp_cel(ds_PV)  # temperature in celsius
-    ds_PV = select_Europe(ds_PV)
     with warnings.catch_warnings():  # to_datetimeindex throws a warning because CESM uses non-leap year calendar. We verified that this is not a problem (see notebook 13) and catch the warning here.
         warnings.simplefilter("ignore")
         ds_PV["time"] = ds_PV.indexes[
             "time"
         ].to_datetimeindex()  # time index that GSEE understands
 
-    # Keep only few timesteps for test data
-    if test_data:
-        ds_wind = ds_wind.isel(time=slice(0, 10))
-        ds_PV = ds_PV.isel(time=slice(0, 10))
-    return ds_wind, ds_PV
-
-
-def open_rho(year, test_data=False):
-    """
-    Open air density and geopotential height
-    :param year:
-    :param test_data:
-    :return:
-    """
-    chunks = {"lat": 10, "lon": 10, "lev": 5, "ilev": 5, "time": 1000}
-    ds_atm = xr.open_dataset(
-        f"{DATA_PATH}atm/hist/b.e212.BHISTcmip6.f09_g17.1500.cam.h6.{year}-01-01-03600.nc",
-        chunks=chunks,
-    )
-    ds_rho = select_Europe(
-        zero_mean_longitudes(
-            ds_atm.sel(ilev=slice(900, 1200), lev=slice(900, 1200))[["RHO_CLUBB", "Z3"]]
-            # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev
-            # we here select slices that contain hub height pressure on the GCM grid
-        )
-    )
-    # Keep only few timesteps for test data
-    if test_data:
-        ds_rho = ds_rho.isel(time=slice(0, 10))
-    return ds_rho
+    return ds_wind.load(), ds_rho.load(), ds_PV.load()
 
 
 def zero_mean_longitudes(ds):
@@ -156,14 +177,14 @@ def temp_cel(ds):
         return None
 
 
-def store_as_pandas_dataframe(ds, name):
+def store_as_pandas_dataframe(ds, name, path):
     """
 
     :param ds:
     :param name:
     :return:
     """
-    ds.to_pandas().to_csv("../output/" + name + ".csv")
+    ds.to_pandas().to_csv(f"{path}output_variables/" + name + ".csv")
 
 
 
@@ -199,17 +220,17 @@ def interpolate_wind_xr(ds, output_height=120):
     return ds_hub, alpha
 
 
-def extrapolate_wind_xr(da, input_height, output_height, alpha):
+def extrapolate_wind_xr(ds, input_height, output_height, ds_alpha):
     """
     Extrapolate wind speeds in ds from the input height to the output height using
     the power law and precomputed alpha values (per timestep and location)
-    :param da: DataArray of wind speeds at input height
+    :param ds: Dataset of wind speeds at input height
     :param input_height:
     :param output_height:
-    :param alpha:
-    :return:
+    :param ds_alpha: dataset of wind profile parameters alpha
+    :return: dataset of winds at output height
     """
-    return da * (output_height / input_height) ** alpha
+    return ds * (output_height / input_height) ** ds_alpha["alpha"]
 
 
 def create_directories():
@@ -217,16 +238,15 @@ def create_directories():
     Creates the directories that are needed to store the output in the desired structure
     :return:
     """
-
     required_directories = [
-        "../output/PV",  # PV output
-        "../output/E-126_7580",  # Wind turbine 1
-        "../output/SWT120_3600",  # Wind turbine 2
-        "../output/SWT142_3150",  # Wind turbine 3
-        "../plots/",  # plots
-        "../inputs/pecd/", # for pecd input data (r-o-r)
-        "../inputs/entsoe/", # for entsoe transparency data (inflow)
+        f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/{sub_folder}"
+        for bc_realization in ["A", "B", "C"]
+        for scenario in ["historical", "SSP370", "SSP245"]
+        for realization in ["A", "B", "C"]
+        for sub_folder in ["atmospheric_variables", "output_variables"]
     ]
+    required_directories.append("../plots/").append("../inputs/entsoe_ror/").append("../inputs/entsoe_inflow/")  # plots, + entsoe input folders
+
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
 
@@ -240,23 +260,23 @@ def add_target_pressure_level(ds, target_height):
     orography.
 
     Conversion assumes that target height sits between pressure
-    levels 3 and 4, which roughly correspond to 195m and 60m above ground.
+    levels 1 and 2, which roughly correspond to 195m and 60m above ground.
 
     :param ds:
     :param target_height:
     :return:
     """
     ds = find_height(ds)  # height above ground
-    a = (target_height - ds.height.isel(lev=3)) / (
-        ds.height.isel(lev=4) - ds.height.isel(lev=3)
+    a = (target_height - ds.height.isel(lev=1)) / (
+        ds.height.isel(lev=2) - ds.height.isel(lev=1)
     )
-    ds["p_target"] = a * ds.lev.isel(lev=4) + (1 - a) * ds.lev.isel(lev=3)
+    ds["p_target"] = a * ds.lev.isel(lev=2) + (1 - a) * ds.lev.isel(lev=1)
     return ds
 
 
 def compute_density_target(
     ds, target_height=120
-):  # todo target height needs to be aligned with multiple hub heights
+):
     """
     Interpolation of atmospheric density which is reported
     between model levels to the pressure level that corresponds
@@ -311,8 +331,18 @@ def density_correct_winds(ds_wind, ds_rho, target_height):
     :return:
     """
     rho_std = 1.225  # kg/m3 according to IEC 61400-12
-    ds_tmp = ds_wind["s_hub"] * (
+    ds_tmp = ds_wind * (
         compute_density_target(ds_rho.copy(), target_height)["RHO_target"] / rho_std
     ) ** (1 / 3)
-    ds_tmp = ds_tmp.to_dataset(name="s_hub")
     return ds_tmp
+
+
+def get_output_path(bc_realization, scenario, realization):
+    """
+
+    :param bc_realization: A, B, C denoting the historical CESM2 realization used in bias correction
+    :param scenario: historical, SSP370, SSP245
+    :param realization: A, B, C denoting the CESM2 realization that has been bias corrected
+    :return:
+    """
+    return f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/"
