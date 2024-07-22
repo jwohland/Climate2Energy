@@ -19,6 +19,9 @@ do
         conda deactivate
         conda activate demand_ninja
         python compute_demand.py ${scenario} ${realization} ${bc_realization} | tee ../logs/compute_demand_log_$(date +%Y_%m_%d_%H)_${identifier}.txt
+        #conda deactivate
+        conda activate hydro
+        python compute_hydro.py ${scenario} ${realization} ${bc_realization}
         conda deactivate
       done
     done

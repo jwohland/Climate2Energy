@@ -13,6 +13,9 @@ CESM2_REALIZATION_DICT = {
     "SSP245": {"A": "1500"},
 }
 
+def get_cesm_dict():
+    return CESM2_REALIZATION_DICT
+
 
 def select_Europe(ds):
     return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
@@ -346,3 +349,22 @@ def get_output_path(bc_realization, scenario, realization):
     :return:
     """
     return f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/"
+
+def quantile_75(ds):
+    """
+    returns the value of the 75th percentile of dataset ds
+    :param ds: 
+    """
+    return np.nanquantile(ds,0.75)
+    
+def get_qu_75(ds):
+    """
+    returns the value of the 75th percentile of dataset ds for all countries
+    :param ds: 
+    """
+    qu = xr.apply_ufunc(quantile_75,ds.discharge,
+            vectorize=True,
+            input_core_dims=[["time"]],
+            exclude_dims=set(("time",))    
+            )
+    return qu
