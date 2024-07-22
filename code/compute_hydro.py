@@ -55,8 +55,8 @@ if __name__ == "__main__":
         calibration_ds["discharge"] = era_discharge_for_calibration
     
         # rolling means
-        discharge = discharge.rolling(time=rolling[tech],center=True).mean()
-        calibration_ds = calibration_ds.rolling(time=rolling[tech],center=True).mean()
+        discharge = discharge.rolling(time=rolling[tech],center=True).mean().load()
+        calibration_ds = calibration_ds.rolling(time=rolling[tech],center=True).mean().load()
         # make sure that only countries present in calibration_ds are present in discharge
         discharge = discharge.sel(country=calibration_ds.country)
     

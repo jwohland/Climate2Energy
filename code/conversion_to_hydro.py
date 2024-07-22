@@ -79,7 +79,6 @@ def create_discharge(scenario,realization):
     file_real = get_cesm_dict()[scenario][realization]
     time_range = get_time_range(scenario)
     # === open preprocess downscale ===
-    print(realization)
     path  = f"/net/meso/climphys/cesm212/b.e212.B{period}cmip6.f09_g17.{file_real}/archive/"
     files_dis = []	
     files_run = []
@@ -108,7 +107,7 @@ def open_discharge(scenario, realization):
         print("River discharge files not found. Creating them.")
         create_discharge(scenario,realization)
         file = glob.glob(f)
-    ds = xr.open_dataset(file)
+    ds = xr.open_dataset(file[0])
     return ds.convert_calendar("proleptic_gregorian") # new calendar to get numpy datetime (necessary for weekly resampling)
 
 def preprocess_era(ds,cesm_lat,cesm_lon):
