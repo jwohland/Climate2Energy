@@ -91,5 +91,10 @@ if __name__ == "__main__":
         # ===========================
         # === Step 3: Save output ===
         # ===========================
-        store_as_pandas_dataframe(Scaled_total_transfer[f"{tech}_GWh"], f"hydro_{tech}_{year}-{end_year}_{realization}_{period}")
+        for year in get_time_range(scenario):
+            store_as_pandas_dataframe(
+                Scaled_total_transfer[f"{tech}_GWh"], 
+                f"hydro_{tech}_{year}",
+                f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/"
+            )
         
