@@ -99,7 +99,7 @@ def create_discharge(scenario,realization):
         return preprocess_cesm(ds,var="runoff")
     runoff = xr.open_mfdataset(files_run,preprocess=preprocess,combine="nested").load().resample(time="1D").mean()
     # downscale and save
-    downscale(discharge,runoff,f"{out_path}{scenario}_{realization}_discharge.nc")
+    downscale(discharge,runoff,f"../output/bias_correction/A/{scenario}/{realization}/atmospheric_variables/CESM2_discharge.nc")
     return None
 
 def open_discharge(scenario, realization):
@@ -107,7 +107,7 @@ def open_discharge(scenario, realization):
     Opens and preprocesses discharge data (see function preprocess_cesm_discharge) for a certain year. If end year is passed as an int, it opens all years between year and end_year (included)
     :param scenario, realization: str
     """
-    f = f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/{scenario}_{realization}_discharge.nc"
+    f = f"../output/bias_correction/A/{scenario}/{realization}/atmospheric_variables/CESM2_discharge.nc"
     file = glob.glob(f)
     if file == []:
         print("River discharge files not found. Creating them.")
