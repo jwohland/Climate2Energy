@@ -33,7 +33,9 @@ if __name__ == "__main__":
                                         era5_discharge_full.sel(time=slice("1995","2014")).discharge.load(), 
                                         discharge_full_for_bc.discharge
                                        ).to_dataset(name="discharge").convert_calendar("proleptic_gregorian") # to get numpy datetime (necessary for weekly resampling)
-    
+    # save bias corrected discharge, year for year
+    for year in get_time_range(scenario):
+        discharge_full.sel(time="year").to_netcdf(f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/atmospheric_variables/bced_CESM2_discharge_{year}.nc")
     # aggregation
     for tech in technologies:
         print(f"Aggregate CESM2 and ERA5 for tech {tech}")
