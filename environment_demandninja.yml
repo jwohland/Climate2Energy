@@ -1,4 +1,4 @@
-name: demand_ninja
+name: demand_ninja_test
 channels:
   - conda-forge
   - defaults
