@@ -89,7 +89,7 @@ In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create o
 Save the csv file downloaded from ENTSO-e into the folder of the corresponding country.
 
 ### Download ENTSO-e power stats for scaling output to actual annual averages
-Download Monthly Domestic Values aggregated by country for 2021, 2022 and 2023 as .csv files, and save into folder `inputs/entsoe/`
+Download Monthly Domestic Values aggregated by country for 2021, 2022 and 2023 as .csv files, and save into folder `inputs/entsoe_inflow/`
 
 https://www.entsoe.eu/data/power-stats/
 

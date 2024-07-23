@@ -437,7 +437,7 @@ def read_annual_prod(countries, tech):
     delim = [";","\t",","] # different years have different delimiters for their .csv file
     time_range = range(2021,2024) #time range considered
     for j,year in enumerate(time_range):
-        annual_prod = pd.read_csv(f"../inputs/entsoe/monthly_domestic_values_{year}.csv",delimiter=delim[j])
+        annual_prod = pd.read_csv(f"../inputs/entsoe_scaling/monthly_domestic_values_{year}.csv",delimiter=delim[j])
         for i,country in enumerate(countries):
             annual_prod_country = annual_prod[annual_prod['Country'] == country] #choosing country
             if tech == "ror":

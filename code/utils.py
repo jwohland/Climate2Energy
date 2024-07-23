@@ -248,7 +248,7 @@ def create_directories():
         for realization in ["A", "B", "C"]
         for sub_folder in ["atmospheric_variables", "output_variables"]
     ]
-    required_directories.extend(["../plots/","../inputs/entsoe_ror/","../inputs/entsoe_inflow/"])  # plots, + entsoe input folders
+    required_directories.extend(["../plots/","../inputs/entsoe_ror/","../inputs/entsoe_inflow/","../inputs/entsoe_scaling/"])  # plots, + entsoe input folders
 
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
