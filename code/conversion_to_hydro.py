@@ -70,6 +70,12 @@ def preprocess_cesm(ds,var="discharge"):
 
 
 def create_discharge(scenario,realization):
+    """
+    Opens runoff and river discharge from CESM2 (according to scenario and realization), preprocesses according to preprocess_cesm.
+    Saves river discharge, downscaled to daily resolution with runoff (through the function downscale).
+    :param scenario: str
+    :param realization: str
+    """
     out_path = f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/"
     # translate parameters for file paths
     if scenario == "historical":
@@ -146,6 +152,12 @@ def open_era(cesm_lat,cesm_lon):
     return era5
 
 def open_weekly(ds,time_range=[]):
+    """
+    Opens a dataset ds and resamples it to weekly time resolution. 
+    If time range isn't empty (and has a start and end date), it opens only the time range (plus a week) for resampling.
+    :param ds: xarray dataset
+    :param time_range: list (empty if not used)
+    """
     if len(time_range) == 2:
         ds.sel(time=slice(time_range[0]+pd.Timedelta(days=0),time_range[1]+pd.Timedelta(days=7))) # open the right time range
     ds_weekly = ds.resample(time='1W',origin="start").sum()
@@ -411,6 +423,11 @@ def objective(params, x, y,q):
     return np.sum((y - y_fit) ** 2)
 
 def get_pwlf(calibration_ds,tech):
+    """
+    Returns the piece-wise linear regression fit for the calibration dataset, giveen a technology tech.
+    :param calibration_ds: xarray dataset
+    :param tech: str
+    """
     # get 75th percentile
     q = get_qu_75(calibration_ds).values
     #calibration parameters
