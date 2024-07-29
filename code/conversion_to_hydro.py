@@ -181,25 +181,6 @@ def open_discharge(scenario, realization):
     )  # new calendar to get numpy datetime (necessary for weekly resampling)
 
 
-def preprocess_era(ds, cesm_lat, cesm_lon):
-    """
-    changes variable names to fit CESM2 standard, and changes lat order to go from 90->-90 to -90->90
-    :param ds: dataset
-    :param cesm_lat: latitude grid of CESM2,
-    """
-    ds = ds.rename({"latitude": "lat", "longitude": "lon", "dis24": "discharge"})
-    ds = ds.reindex(lat=ds.lat[::-1])
-    ds_co = ds.coarsen(lat=10, lon=10, boundary="trim").sum()
-    # ds_co = select_Europe(ds_co)
-    # since the ERA5 grid is exactly 10 higher resolution than CESM2, the two grids should have the same length after selecting Europe. However, there might be slight differences in the absolute values of the grids (lat = 30.2 instead of 30.25) due to the coarsening. That is why we assign the lat and lon values of CESM2 here.
-    if len(ds_co.lat) == len(cesm_lat) and len(ds_co.lon) == len(cesm_lon):
-        ds_co["lat"] = cesm_lat
-        ds_co["lon"] = cesm_lon
-    else:
-        print("Error: CESM2 and ERA5 grid are not same length")
-    return ds_co
-
-
 def open_era(cesm_lat, cesm_lon):
     """
     Opens ERA5 discharge, and preprocesses it to fit the naming conventions
@@ -208,8 +189,23 @@ def open_era(cesm_lat, cesm_lon):
     # ERA5 discharge for the ENTSO-e time range
     file_name = "../output/bias_correction/Raw_ERA5_discharge.nc"
 
-    def preprocess_era_here(ds):
-        return preprocess_era(ds, cesm_lat, cesm_lon)
+    def preprocess_era(ds):
+        """
+        changes variable names to fit CESM2 standard, and changes lat order to go from 90->-90 to -90->90
+        :param ds: dataset
+        :param cesm_lat: latitude grid of CESM2,
+        """
+        ds = ds.rename({"latitude": "lat", "longitude": "lon", "dis24": "discharge"})
+        ds = ds.reindex(lat=ds.lat[::-1])
+        ds_co = ds.coarsen(lat=10, lon=10, boundary="trim").sum()
+        # ds_co = select_Europe(ds_co)
+        # since the ERA5 grid is exactly 10 higher resolution than CESM2, the two grids should have the same length after selecting Europe. However, there might be slight differences in the absolute values of the grids (lat = 30.2 instead of 30.25) due to the coarsening. That is why we assign the lat and lon values of CESM2 here.
+        if len(ds_co.lat) == len(cesm_lat) and len(ds_co.lon) == len(cesm_lon):
+            ds_co["lat"] = cesm_lat
+            ds_co["lon"] = cesm_lon
+        else:
+            print("Error: CESM2 and ERA5 grid are not same length")
+        return ds_co
 
     try:
         ds_era5 = xr.open_dataset(file_name)
