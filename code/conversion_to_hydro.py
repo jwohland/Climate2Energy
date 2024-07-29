@@ -14,7 +14,7 @@ from utils import (
     select_Europe,
     get_time_range,
     get_qu_75,
-    CESM2_REALIZATION_DICT
+    CESM2_REALIZATION_DICT,
 )
 
 
@@ -125,20 +125,7 @@ def create_discharge(scenario, realization):
     files_dis = []
     files_run = []
     for year in time_range:
-        for month in [
-            "01",
-            "02",
-            "03",
-            "04",
-            "05",
-            "06",
-            "07",
-            "08",
-            "09",
-            "10",
-            "11",
-            "12",
-        ]:
+        for month in [f"{m:02d}" for m in range(1, 13)]:
             files_dis.append(
                 f"{path}rof/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.mosart.h0.{year}-{month}.nc"
             )
