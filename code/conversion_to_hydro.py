@@ -184,7 +184,7 @@ def open_discharge(scenario, realization):
 def open_era(cesm_lat, cesm_lon):
     """
     Opens ERA5 discharge, and preprocesses it to fit the naming conventions
-    If the file doesn't exist, the function executes a bash script that creates the necessary file
+    If the file doesn't exist, the function creates the necessary file
     """
     # ERA5 discharge for the ENTSO-e time range
     file_name = "../output/bias_correction/Raw_ERA5_discharge.nc"
@@ -216,7 +216,7 @@ def open_era(cesm_lat, cesm_lon):
             for year in range(1995, 2023)
         ]  # historical+calbration ERA5 data
         ds_era5 = xr.open_mfdataset(
-            files, preprocess=preprocess_era_here, combine="nested"
+            files, preprocess=preprocess_era, combine="nested"
         )
         ds_era5.to_netcdf(f"../output/bias_correction/Raw_ERA5_discharge.nc")
 
