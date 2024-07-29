@@ -79,7 +79,6 @@ def downscale(ds_discharge, ds_runoff, save_info):
     )
 
     ds_discharge_daily.to_netcdf(save_info)
-    return None
 
 
 def preprocess_hydro_cesm(ds, var="discharge"):
@@ -162,7 +161,6 @@ def create_discharge(scenario, realization):
         runoff,
         f"../output/bias_correction/A/{scenario}/{realization}/atmospheric_variables/CESM2_discharge.nc",  # todo this is partially identical to get_output_path so should be using it
     )
-    return None
 
 
 def open_discharge(scenario, realization):
