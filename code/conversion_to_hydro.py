@@ -24,9 +24,18 @@ from utils import (
 
 
 def downscale(ds_discharge, ds_runoff, save_info):
+    """
+    Takes monthly mean river discharge and interpolates to daily data assuming
+    that the sub-monthly evolution of river discharge and runoff are identical.
+
+    :param ds_discharge: Monthly river discharge
+    :param ds_runoff: Daily runoff
+    :param save_info:
+    :return:
+    """
     ## Do mean of runoff over latitude and longitude (One value per day, spatially aggregated)
     ds_runoff_mean = ds_runoff.mean(dim=["lon", "lat"])
-    ## Get the monthly average of runoff, and then the normlized profiles of runoff
+    ## Get the monthly average of runoff, and then the normalize profiles of runoff
     ds_runoff_mean.coords["year_month"] = (
         "time",
         ds_runoff_mean.time.dt.strftime("%Y-%m").data,
@@ -73,7 +82,7 @@ def downscale(ds_discharge, ds_runoff, save_info):
     return None
 
 
-def preprocess_cesm(ds, var="discharge"):
+def preprocess_hydro_cesm(ds, var="discharge"):
     """
     Returns a dataset of river discharge or runoff (param var) for Europe
     :param ds:
@@ -110,7 +119,6 @@ def create_discharge(scenario, realization):
     :param scenario: str
     :param realization: str
     """
-    out_path = f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/"  # todo this path must be changed
     # translate parameters for file paths
     if scenario == "historical":
         period = "HIST"
@@ -122,8 +130,7 @@ def create_discharge(scenario, realization):
     path = (
         f"/net/meso/climphys/cesm212/b.e212.B{period}cmip6.f09_g17.{file_real}/archive/"
     )
-    files_dis = []
-    files_run = []
+    files_dis, files_run = [], []
     for year in time_range:
         for month in [f"{m:02d}" for m in range(1, 13)]:
             files_dis.append(
@@ -134,15 +141,17 @@ def create_discharge(scenario, realization):
         )
     # get monthly discharge
     discharge = xr.open_mfdataset(
-        files_dis, preprocess=preprocess_cesm, combine="nested"
+        files_dis, preprocess=preprocess_hydro_cesm, combine="nested"
     ).load()
 
     # get daily runoff
-    def preprocess(ds):
-        return preprocess_cesm(ds, var="runoff")
-
+    def preprocess_runoff(ds):
+        """
+        Helper function because open_mfdataset wants single variable functions
+        """
+        return preprocess_hydro_cesm(ds, var="runoff")
     runoff = (
-        xr.open_mfdataset(files_run, preprocess=preprocess, combine="nested")
+        xr.open_mfdataset(files_run, preprocess=preprocess_runoff, combine="nested")
         .load()
         .resample(time="1D")
         .mean()
@@ -151,7 +160,7 @@ def create_discharge(scenario, realization):
     downscale(
         discharge,
         runoff,
-        f"../output/bias_correction/A/{scenario}/{realization}/atmospheric_variables/CESM2_discharge.nc",
+        f"../output/bias_correction/A/{scenario}/{realization}/atmospheric_variables/CESM2_discharge.nc",  # todo this is partially identical to get_output_path so should be using it
     )
     return None
 
