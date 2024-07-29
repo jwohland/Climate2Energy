@@ -215,9 +215,7 @@ def open_era(cesm_lat, cesm_lon):
             f"/net/xenon/climphys/lbloin/CESM2energy_data/ERA5_discharge/discharge_{year}.nc"
             for year in range(1995, 2023)
         ]  # historical+calbration ERA5 data
-        ds_era5 = xr.open_mfdataset(
-            files, preprocess=preprocess_era, combine="nested"
-        )
+        ds_era5 = xr.open_mfdataset(files, preprocess=preprocess_era, combine="nested")
         ds_era5.to_netcdf(f"../output/bias_correction/Raw_ERA5_discharge.nc")
 
     return ds_era5
@@ -508,12 +506,15 @@ def weighted_aggregation(ds_discharge, tech):
     df_jrc = pd.read_csv(file_path)
     country_list = df_jrc["country_code"].unique().tolist()
 
-    file_normalized_capacity = glob.glob(f"../inputs/normalized_capacity_{tech}.nc")
-
-    if file_normalized_capacity != []:
-        print("Loading normalized capacity " + tech + " dataset")
-        ds_C = xr.open_dataset(file_normalized_capacity[0])
-    else:
+    file_name = "../inputs/normalized_capacity_{tech}.nc"
+    try:
+        ds_C = xr.open_dataset(file_name)
+    except FileNotFoundError:
+        print(
+            "normalized capacity "
+            + tech
+            + " dataset does not exist. Start computing it."
+        )
         # Define the type of power plants to consider
         if tech == "ror":
             type_code = ["HROR"]
@@ -521,7 +522,6 @@ def weighted_aggregation(ds_discharge, tech):
             type_code = ["HDAM", "HPHS"]
 
         # Create the dataset
-        print("Creating normalized capacity " + tech + " dataset")
         ds_C = xr.Dataset(
             data_vars=dict(
                 normalized_capacity=(
@@ -535,40 +535,43 @@ def weighted_aggregation(ds_discharge, tech):
 
         # Fill the dataset
         for country_code in country_list:
-            C = np.zeros((len(lat), len(lon)))
+            Capacities_JRC = np.zeros((len(lat), len(lon)))
             for ii in range(len(lon)):
                 for jj in range(len(lat)):
-                    C[jj, ii] = df_jrc["installed_capacity_MW"][
-                        (df_jrc["type"].isin(type_code))
-                        & (df_jrc["country_code"] == country_code)
-                        & (lon_edge[ii] < df_jrc["lon"])
+                    Capacities_JRC[jj, ii] = df_jrc["installed_capacity_MW"][
+                        (df_jrc["type"].isin(type_code))  # correct technologie
+                        & (
+                            df_jrc["country_code"] == country_code
+                        )  # belongs to correct country
+                        & (
+                            lon_edge[ii] < df_jrc["lon"]
+                        )  # this and next 3 lines: lies within the currently considered grid box
                         & (df_jrc["lon"] < lon_edge[ii + 1])
                         & (lat_edge[jj] < df_jrc["lat"])
                         & (df_jrc["lat"] < lat_edge[jj + 1])
                     ].sum()
-
+            # Normalize capacities such that sum over each country yields one
             ds_C.normalized_capacity.loc[{"country": country_code}] = (
-                C[:, :]
+                Capacities_JRC[:, :]
                 / df_jrc["installed_capacity_MW"][
                     (df_jrc["type"].isin(type_code))
                     & (df_jrc["country_code"] == country_code)
                 ].sum()
             )
-
-        ds_C.to_netcdf(f"../inputs/normalized_capacity_{tech}.nc")
+        ds_C.to_netcdf(file_name)
         print("Normalized capacity " + tech + " dataset saved")
 
     # Calculate the discharge per country
-    ds_w = []
+    ds_discharge_weighted = []
     for country in country_list:
         ds = (
             ds_C.normalized_capacity.sel(country=country) * ds_discharge.discharge
         ).sum(("lat", "lon"))
-        ds_w.append(ds)
-    ds_w = xr.concat(ds_w, dim="country")
-    ds_w = ds_w.to_dataset(name="discharge")
+        ds_discharge_weighted.append(ds)
+    ds_discharge_weighted = xr.concat(ds_discharge_weighted, dim="country")
+    ds_discharge_weighted = ds_discharge_weighted.to_dataset(name="discharge")
 
-    return ds_w
+    return ds_discharge_weighted
 
 
 def piecewise_linear(x, a1, b1, a2, b2, q):
