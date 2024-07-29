@@ -14,7 +14,7 @@ from utils import (
     select_Europe,
     get_time_range,
     get_qu_75,
-    get_cesm_dict,
+    CESM2_REALIZATION_DICT
 )
 
 
@@ -110,13 +110,13 @@ def create_discharge(scenario, realization):
     :param scenario: str
     :param realization: str
     """
-    out_path = f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/"
+    out_path = f"/net/xenon/climphys/lbloin/CESM2energy_data/CESM2_discharge/"  # todo this path must be changed
     # translate parameters for file paths
     if scenario == "historical":
         period = "HIST"
     else:
         period = scenario
-    file_real = get_cesm_dict()[scenario][realization]
+    file_real = CESM2_REALIZATION_DICT[scenario][realization]
     time_range = get_time_range(scenario)
     # === open preprocess downscale ===
     path = (

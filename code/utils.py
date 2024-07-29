@@ -14,10 +14,6 @@ CESM2_REALIZATION_DICT = {
 }
 
 
-def get_cesm_dict():
-    return CESM2_REALIZATION_DICT
-
-
 def select_Europe(ds):
     return ds.sel(lon=slice(-15, 50), lat=slice(30, 75))
 
