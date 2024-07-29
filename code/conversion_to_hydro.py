@@ -206,23 +206,24 @@ def open_era(cesm_lat, cesm_lon):
     If the file doesn't exist, the function executes a bash script that creates the necessary file
     """
     # ERA5 discharge for the ENTSO-e time range
-    file = glob.glob(f"../output/bias_correction/Raw_ERA5_discharge.nc")
+    file_name = "../output/bias_correction/Raw_ERA5_discharge.nc"
 
     def preprocess_era_here(ds):
         return preprocess_era(ds, cesm_lat, cesm_lon)
-
-    if file == []:
+    try:
+        ds_era5 = xr.open_dataset(file_name)
+    except FileNotFoundError:
+        print("ERA5 discharge files not found. Creating them.")
         files = [
             f"/net/xenon/climphys/lbloin/CESM2energy_data/ERA5_discharge/discharge_{year}.nc"
             for year in range(1995, 2023)
         ]  # historical+calbration ERA5 data
-        era5 = xr.open_mfdataset(
+        ds_era5 = xr.open_mfdataset(
             files, preprocess=preprocess_era_here, combine="nested"
         )
-        era5.to_netcdf(f"../output/bias_correction/Raw_ERA5_discharge.nc")
-    else:
-        era5 = xr.open_dataset(file[0])
-    return era5
+        ds_era5.to_netcdf(f"../output/bias_correction/Raw_ERA5_discharge.nc")
+
+    return ds_era5
 
 
 def open_weekly(ds, time_range=[]):
