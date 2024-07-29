@@ -163,18 +163,19 @@ def create_discharge(scenario, realization):
     )
 
 
+
 def open_discharge(scenario, realization):
     """
     Opens and preprocesses discharge data (see function preprocess_cesm_discharge) for a certain year. If end year is passed as an int, it opens all years between year and end_year (included)
     :param scenario, realization: str
     """
-    f = f"{get_output_path("A", scenario, realization)}/atmospheric_variables/CESM2_discharge.nc"
-    file = glob.glob(f)
-    if file == []:
+    filename = f"{get_output_path("A", scenario, realization)}/atmospheric_variables/CESM2_discharge.nc"
+    try:
+        ds = xr.open_dataset(filename)
+    except FileNotFoundError:
         print("River discharge files not found. Creating them.")
         create_discharge(scenario, realization)
-        file = glob.glob(f)
-    ds = xr.open_dataset(file[0])
+        ds = xr.open_dataset(filename)
     return ds.convert_calendar(
         "proleptic_gregorian"
     )  # new calendar to get numpy datetime (necessary for weekly resampling)
