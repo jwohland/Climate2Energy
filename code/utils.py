@@ -13,6 +13,7 @@ CESM2_REALIZATION_DICT = {
     "SSP245": {"A": "1500"},
 }
 
+
 def get_cesm_dict():
     return CESM2_REALIZATION_DICT
 
@@ -190,7 +191,6 @@ def store_as_pandas_dataframe(ds, name, path):
     ds.to_pandas().to_csv(f"{path}output_variables/" + name + ".csv")
 
 
-
 def interpolate_wind_xr(ds, output_height=120):
     """
     Calculates wind speeds at output height using data at evolving heights and
@@ -248,7 +248,14 @@ def create_directories():
         for realization in ["A", "B", "C"]
         for sub_folder in ["atmospheric_variables", "output_variables"]
     ]
-    required_directories.extend(["../plots/","../inputs/entsoe_ror/","../inputs/entsoe_inflow/","../inputs/entsoe_scaling/"])  # plots, + entsoe input folders
+    required_directories.extend(
+        [
+            "../plots/",
+            "../inputs/entsoe_ror/",
+            "../inputs/entsoe_inflow/",
+            "../inputs/entsoe_scaling/",
+        ]
+    )  # plots, + entsoe input folders
 
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
@@ -277,9 +284,7 @@ def add_target_pressure_level(ds, target_height):
     return ds
 
 
-def compute_density_target(
-    ds, target_height=120
-):
+def compute_density_target(ds, target_height=120):
     """
     Interpolation of atmospheric density which is reported
     between model levels to the pressure level that corresponds
@@ -350,21 +355,25 @@ def get_output_path(bc_realization, scenario, realization):
     """
     return f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/"
 
+
 def quantile_75(ds):
     """
     returns the value of the 75th percentile of dataset ds
-    :param ds: 
+    :param ds:
     """
-    return np.nanquantile(ds,0.75)
-    
+    return np.nanquantile(ds, 0.75)
+
+
 def get_qu_75(ds):
     """
     returns the value of the 75th percentile of dataset ds for all countries
-    :param ds: 
+    :param ds:
     """
-    qu = xr.apply_ufunc(quantile_75,ds.discharge,
-            vectorize=True,
-            input_core_dims=[["time"]],
-            exclude_dims=set(("time",))    
-            )
+    qu = xr.apply_ufunc(
+        quantile_75,
+        ds.discharge,
+        vectorize=True,
+        input_core_dims=[["time"]],
+        exclude_dims=set(("time",)),
+    )
     return qu

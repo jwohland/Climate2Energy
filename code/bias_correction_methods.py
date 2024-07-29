@@ -1,10 +1,10 @@
-import xarray as xr
-from bias_correction import BiasCorrection
-import subprocess
 import glob
-from utils import *
-import numpy as np
+import subprocess
+
 import pandas as pd
+from bias_correction import BiasCorrection
+
+from utils import *
 from utils import interpolate_wind_xr, find_height
 
 
@@ -23,10 +23,11 @@ def bias_correct_per_loc(reference, model, da, method="basic_quantile"):
         bc = BiasCorrection(pd.Series(reference), pd.Series(model), pd.Series(da))
         return bc.correct(method=method)
 
+
 def bias_correct_hydro(ds, ref, hist, method="basic_quantile"):
     """
     bias correction for hydro. bias corrects over time for each country present in the thre datasets
-    
+
     """
     corrected = xr.apply_ufunc(
         bias_correct_per_loc,
@@ -58,15 +59,21 @@ def prepare_bias_correction(bc_realization):
         mod_file = f"../output/bias_correction/{bc_realization}/Raw_CESM2_{var}_{bc_realization}.nc"
         if glob.glob(ref_file) == []:
             print(f"missing historical ERA5 file for {var}")
-            subprocess.run(
-                ["bash", f"preprocess/preprocess_{var}_ERA5.sh"]
-            )
+            subprocess.run(["bash", f"preprocess/preprocess_{var}_ERA5.sh"])
         if glob.glob(mod_file) == []:
-            print(f"missing historical model file for {var} for historical realization {bc_realization}")
+            print(
+                f"missing historical model file for {var} for historical realization {bc_realization}"
+            )
             bc_identifier = CESM2_REALIZATION_DICT["historical"][bc_realization]
             subprocess.run(
-                ["bash", f"preprocess/preprocess_{var}_CESM2.sh", bc_realization, bc_identifier]
+                [
+                    "bash",
+                    f"preprocess/preprocess_{var}_CESM2.sh",
+                    bc_realization,
+                    bc_identifier,
+                ]
             )
+
 
 def bias_correct_dataset(ds, var, bc_realization, method="basic_quantile"):
     """
