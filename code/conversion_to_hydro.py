@@ -15,6 +15,7 @@ from utils import (
     get_time_range,
     get_qu_75,
     CESM2_REALIZATION_DICT,
+    get_output_path
 )
 
 
@@ -23,14 +24,14 @@ from utils import (
 # =================================
 
 
-def downscale(ds_discharge, ds_runoff, save_info):
+def downscale(ds_discharge, ds_runoff, file_name):
     """
     Takes monthly mean river discharge and interpolates to daily data assuming
     that the sub-monthly evolution of river discharge and runoff are identical.
 
     :param ds_discharge: Monthly river discharge
     :param ds_runoff: Daily runoff
-    :param save_info:
+    :param file_name: Output file name including the path to the file
     :return:
     """
     ## Do mean of runoff over latitude and longitude (One value per day, spatially aggregated)
@@ -77,8 +78,7 @@ def downscale(ds_discharge, ds_runoff, save_info):
     ds_discharge_daily["discharge"] = (
         ds_discharge_daily.discharge_monthly_ave * ds_runoff_mean.runoff_normalized
     )
-
-    ds_discharge_daily.to_netcdf(save_info)
+    ds_discharge_daily.to_netcdf(file_name)
 
 
 def preprocess_hydro_cesm(ds, var="discharge"):
@@ -159,7 +159,7 @@ def create_discharge(scenario, realization):
     downscale(
         discharge,
         runoff,
-        f"../output/bias_correction/A/{scenario}/{realization}/atmospheric_variables/CESM2_discharge.nc",  # todo this is partially identical to get_output_path so should be using it
+        f"{get_output_path("A", scenario, realization)}/atmospheric_variables/CESM2_discharge.nc"
     )
 
 
@@ -168,7 +168,7 @@ def open_discharge(scenario, realization):
     Opens and preprocesses discharge data (see function preprocess_cesm_discharge) for a certain year. If end year is passed as an int, it opens all years between year and end_year (included)
     :param scenario, realization: str
     """
-    f = f"../output/bias_correction/A/{scenario}/{realization}/atmospheric_variables/CESM2_discharge.nc"
+    f = f"{get_output_path("A", scenario, realization)}/atmospheric_variables/CESM2_discharge.nc"
     file = glob.glob(f)
     if file == []:
         print("River discharge files not found. Creating them.")
