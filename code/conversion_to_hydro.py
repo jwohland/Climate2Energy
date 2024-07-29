@@ -15,7 +15,7 @@ from utils import (
     get_time_range,
     get_qu_75,
     CESM2_REALIZATION_DICT,
-    get_output_path
+    get_output_path,
 )
 
 
@@ -149,6 +149,7 @@ def create_discharge(scenario, realization):
         Helper function because open_mfdataset wants single variable functions
         """
         return preprocess_hydro_cesm(ds, var="runoff")
+
     runoff = (
         xr.open_mfdataset(files_run, preprocess=preprocess_runoff, combine="nested")
         .load()
@@ -159,9 +160,8 @@ def create_discharge(scenario, realization):
     downscale(
         discharge,
         runoff,
-        f"{get_output_path("A", scenario, realization)}/atmospheric_variables/CESM2_discharge.nc"
+        f"{get_output_path("A", scenario, realization)}/atmospheric_variables/CESM2_discharge.nc",
     )
-
 
 
 def open_discharge(scenario, realization):
@@ -210,6 +210,7 @@ def open_era(cesm_lat, cesm_lon):
 
     def preprocess_era_here(ds):
         return preprocess_era(ds, cesm_lat, cesm_lon)
+
     try:
         ds_era5 = xr.open_dataset(file_name)
     except FileNotFoundError:
