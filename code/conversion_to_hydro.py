@@ -328,7 +328,7 @@ def open_entsoe_ror():
     return ds_ror
 
 
-def create_historical_inflow():
+def create_entsoe_inflow():
 
     ## CREATE TIME DATAFRAME ##
 
@@ -338,49 +338,27 @@ def create_historical_inflow():
     start_date = dt.datetime(year_0, 1, 4)
     end_date = dt.datetime(year_N, 12, 25)
 
-    dates = []
-    weeks = []
-    years = []
-    current_date = start_date
-    current_year = year_0
-    week = 1
-    while current_date <= end_date:
-        dates.append(current_date)
-        weeks.append(week)
-        years.append(current_year)
-        current_date += dt.timedelta(days=7)
-        if (current_date + dt.timedelta(days=2)).year > current_year:
-            current_year += 1
-            week = 1
-        else:
-            week += 1
-
-    df_time = pd.DataFrame({"date": dates, "week": weeks, "year": years})
+    dates = pd.date_range(start_date, end_date, freq="1W-MON")
+    df_time = pd.DataFrame(
+        {
+            "date": dates,
+            "week": dates.isocalendar().week,
+            "year": dates.isocalendar().year,
+        }
+    )
+    df_time = df_time.reset_index().drop(columns="index")
 
     ## COUNTRY LIST ##
     country_list = ["AT", "BG", "FR", "IT", "ME", "NO", "PT", "RO", "ES", "SE", "CH"]
 
-    ## CREATE DATASET ##
+    ## CREATE EMPTY DATASET ##
+    placeholder_data = (
+        ["country", "time"],
+        np.full((len(country_list), len(df_time)), np.nan),
+    )
     ds_old = xr.Dataset(
         coords={"country": country_list, "time": df_time.date},
-        data_vars={
-            "V": (
-                ["country", "time"],
-                np.full((len(country_list), len(df_time)), np.nan),
-            ),
-            "gen": (
-                ["country", "time"],
-                np.full((len(country_list), len(df_time)), np.nan),
-            ),
-            "delta_V": (
-                ["country", "time"],
-                np.full((len(country_list), len(df_time)), np.nan),
-            ),
-            "inflow_GWh": (
-                ["country", "time"],
-                np.full((len(country_list), len(df_time)), np.nan),
-            ),
-        },
+        data_vars={x: placeholder_data for x in ["V", "gen", "delta_V", "inflow_GWh"]},
     )
 
     ## READ FILLING LEVELS ##
@@ -475,7 +453,7 @@ def create_historical_inflow():
 def open_entsoe_inflow():
     file = glob.glob("../inputs/entsoe_historic_inflow/historic_inflow.nc")
     if file == []:
-        create_historical_inflow()
+        create_entsoe_inflow()
     ds_inflow = xr.open_dataset(file[0])
 
     return ds_inflow
@@ -570,7 +548,6 @@ def weighted_aggregation(ds_discharge, tech):
         ds_discharge_weighted.append(ds)
     ds_discharge_weighted = xr.concat(ds_discharge_weighted, dim="country")
     ds_discharge_weighted = ds_discharge_weighted.to_dataset(name="discharge")
-
     return ds_discharge_weighted
 
 
