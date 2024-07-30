@@ -21,6 +21,7 @@ dependencies:
   - dask
   - openpyxl
   - pwlf
+  - tqdm
 
   - pip
   - pip:
