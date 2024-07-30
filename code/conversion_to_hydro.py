@@ -441,9 +441,7 @@ def create_entsoe_inflow():
 
     ## OUTPUT DATASET AND REVOME UNNECESSARY VARIABLES ##
     ds = ds_new.copy()
-    variables_to_delete = ["V", "gen", "delta_V", "ratio_dV_maxGen"]
-    for var in variables_to_delete:
-        ds = ds.drop_vars(var)
+    ds = ds.drop_vars(["V", "gen", "delta_V", "ratio_dV_maxGen"])
 
     ds.to_netcdf("../inputs/entsoe_historic_inflow/historic_inflow.nc")
     return None
