@@ -221,7 +221,7 @@ def open_era(cesm_lat, cesm_lon):
     return ds_era5
 
 
-def open_weekly(ds, time_range=[]):
+def resample_weekly(ds, time_range=[]):
     """
     Opens a dataset ds and resamples it to weekly time resolution.
     If time range isn't empty (and has a start and end date), it opens only the time range (plus a week) for resampling.

@@ -64,10 +64,10 @@ if __name__ == "__main__":
             time_range = calibration_ds.time[
                 [0, -1]
             ].values  # find values of start and end date, to open era5 weekly correctly
-            era_discharge_for_calibration = open_weekly(
+            era_discharge_for_calibration = resample_weekly(
                 era_discharge_for_calibration, time_range=time_range
             )  # get era5 in weekly resolution
-            discharge = open_weekly(discharge)  # get cesm2 in weekly resolution
+            discharge = resample_weekly(discharge)  # get cesm2 in weekly resolution
         if tech == "ror":
             era_discharge_for_calibration["time"] = (
                 calibration_ds.time
@@ -120,5 +120,5 @@ if __name__ == "__main__":
             store_as_pandas_dataframe(
                 Scaled_total_transfer[f"{tech}_GWh"],
                 f"hydro_{tech}_{year}",
-                f"../output/bias_correction/{bc_realization}/{scenario}/{realization}/",
+                get_output_path(bc_realization, scenario, realization),
             )
