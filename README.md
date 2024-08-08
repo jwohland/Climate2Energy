@@ -64,10 +64,11 @@ The file name should have this format: "Actual Generation per Production Type_20
 
 ### Download reservoir filling level and reservoir generation from ENTSO-e Transparency platform
 #### Reservoir filling level
-On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download run-of-river generation per each country:
+On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download reservoir filling level per each country:
 - Go to Generation>Water Reservoirs and Hydro Storage Plants
 - Select "Country" and in "Area" select the desired country.
 - Download the csv at Export Data>Water Reservoirs and Hydro Storage Plants (CSV).
+This will fetch a unique file that contains all reservoir filling levels from 2014 to the day of download.
 The file name should have this format: "Water Reservoirs and Hydro Storage Plants_201412290000-202412300000.csv".
 #### Reservoir generation
 On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download reservoir generation per each year per each country:
@@ -77,14 +78,12 @@ On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download res
 - Download the full year at Export Data>Actual Generation per Production Type (Year,CSV).
 The file name should have this format: "Actual Generation per Production Type_201501010000-201601010000.csv".
 
-#### Save the downloaded file into the input folder
+### Save the downloaded files into the input folder
 With Reservoir filling levels and Reservoir generation it will be possible to compute the historical energy inflow in reservoirs.
 
 In the folder `inputs`, create the folder `entsoe_inflow`. In this folder, create one folder per country, named with the country code, e.g. `AT`.
 Save the single reservoir filling level csv file downloaded (one file for all the years) and all the Reservoir generation files (one file per year, so multiple files) from ENTSO-e into the folder of the corresponding country.
 
-
-### Code information
 In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create one folder per country, named with the country code, e.g. `AT`.
 Save the csv file downloaded from ENTSO-e into the folder of the corresponding country.
 
