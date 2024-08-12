@@ -36,19 +36,19 @@ def downscale(ds_discharge, ds_runoff, file_name):
     """
     ## Do mean of runoff over latitude and longitude (One value per day, spatially aggregated)
     ds_runoff_mean = ds_runoff.mean(dim=["lon", "lat"])
-    ## Get the monthly average of runoff, and then the normalize profiles of runoff
+    ## Get the monthly mean of runoff, and then the normalize profiles of runoff
     ds_runoff_mean.coords["year_month"] = (
         "time",
         ds_runoff_mean.time.dt.strftime("%Y-%m").data,
     )
 
-    monthly_ave = ds_runoff_mean.groupby("year_month").mean(dim="time")
-    year_month_str = ds_runoff_mean.time.dt.strftime("%Y-%m").data
-    monthly_ave_data = monthly_ave.sel(year_month=year_month_str).runoff.data
-    runoff_monthly_ave = xr.DataArray(
-        data=monthly_ave_data, dims="time", coords={"time": ds_runoff_mean.time}
+    monthly_mean = ds_runoff_mean.groupby("year_month").mean(dim="time")
+    year_month = ds_runoff_mean.time.dt.strftime("%Y-%m").data
+    monthly_mean_data = monthly_mean.sel(year_month=year_month).runoff.data
+    runoff_monthly_mean = xr.DataArray(
+        data=monthly_mean_data, dims="time", coords={"time": ds_runoff_mean.time}
     )
-    ds_runoff_mean["runoff_normalized"] = ds_runoff_mean.runoff / runoff_monthly_ave
+    ds_runoff_mean["runoff_normalized"] = ds_runoff_mean.runoff / runoff_monthly_mean
     ds_runoff_mean = ds_runoff_mean.drop_vars("year_month")
 
     ## Sincronyze all time stamps to midnight
@@ -65,7 +65,7 @@ def downscale(ds_discharge, ds_runoff, file_name):
     ds_discharge_daily = (
         ds_discharge.resample(time="1D")
         .ffill()
-        .rename({"discharge": "discharge_monthly_ave"})
+        .rename({"discharge": "discharge_expanded"})
     )
     ds_discharge_daily["time"] = ds_discharge_daily.time + dt.timedelta(
         days=-31
@@ -76,7 +76,7 @@ def downscale(ds_discharge, ds_runoff, file_name):
     ds_runoff_mean = ds_runoff_mean.broadcast_like(ds_discharge_daily)
     ## Calculate daily values of river discharge
     ds_discharge_daily["discharge"] = (
-        ds_discharge_daily.discharge_monthly_ave * ds_runoff_mean.runoff_normalized
+        ds_discharge_daily.discharge_expanded * ds_runoff_mean.runoff_normalized
     )
     ds_discharge_daily.to_netcdf(file_name)
 
