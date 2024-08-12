@@ -329,7 +329,16 @@ def open_entsoe_ror():
 
 
 def create_entsoe_inflow():
+    """
+    This function reads the ENTSO-e data for the inflow technology (from the folder inputs/entsoe_inflow), and creates a dataset with the inflow values.
+    The inflow values are calculated as the sum of the generation and the change in filling level of the reservoirs, based on the energy balance of the reservoir.
+    Due to low quality of the public data, the inflow values are adjusted in two steps:
+    1. The filling level values are adjusted to remove outliers
+    2. The inflow values are adjusted to remove negative values
+    The function saves the dataset with the inflow values in the folder inputs/entsoe_inflow.
 
+    ds_raw is the dataset with the raw inflow values, and ds_adj is the dataset with the adjusted inflow values.
+    """
     ## CREATE TIME DATAFRAME ##
 
     year_0 = 2016
@@ -352,20 +361,20 @@ def create_entsoe_inflow():
     country_list = ["AT", "BG", "FR", "IT", "ME", "NO", "PT", "RO", "ES", "SE", "CH"]
 
     ## CREATE EMPTY DATASET ##
-    placeholder_data = (
-        ["country", "time"],
-        np.full((len(country_list), len(df_time)), np.nan),
-    )
-    ds_old = xr.Dataset(
-        coords={"country": country_list, "time": df_time.date},
-        data_vars={x: placeholder_data for x in ["V", "gen", "delta_V", "inflow_GWh"]},
+    # Create the placeholder data function
+    def create_placeholder_data():
+        return np.full((len(country_list), len(df_time)), np.nan)
+    ds_raw = xr.Dataset(
+    coords={"country": country_list, "time": df_time.date},
+    data_vars={x: (["country", "time"], create_placeholder_data()) for x in ["V", "gen", "delta_V", "inflow_GWh"]},
     )
 
     ## READ FILLING LEVELS ##
     for country in tqdm(country_list, desc="Reading filling levels per country"):
-        filename = f"../inputs/entsoe_historic_inflow/{country}/Water Reservoirs and Hydro Storage Plants_201412290000-202412300000.csv"
+        filename = f"../inputs/entsoe_inflow/{country}/Water Reservoirs and Hydro Storage Plants_201412290000-202412300000.csv"
         df_V = pd.read_csv(filename)
         V_list = []
+        # Compile filling levels for each year and interpolate missing values
         for year in range(year_0, year_N + 1):
             mask = df_V.columns.str.contains(str(year))
             V_list.extend(
@@ -375,19 +384,21 @@ def create_entsoe_inflow():
                 .values.flatten()
                 / 1000
             )
-        ds_old["V"].loc[{"country": country}] = xr.DataArray(V_list, dims=("time"))
+        # Add filling levels to dataset
+        ds_raw["V"].loc[{"country": country}] = xr.DataArray(V_list, dims=("time"))
 
-    ## CALCULATE CHANGE IN FILLING LEVEL DELTA V ##
-    ds_old["delta_V"] = ds_old["V"].diff("time")
-    ds_old["delta_V"] = ds_old["delta_V"].shift(time=-1)
+    # Calculate the change in filling level (Delta V)
+    ds_raw["delta_V"] = ds_raw["V"].diff("time")
+    ds_raw["delta_V"] = ds_raw["delta_V"].shift(time=-1)
 
     ## READ GENERATION ##
     date_format = "%d.%m.%Y %H:%M"
 
     for country in tqdm(country_list, desc="Reading reservoir generation per country"):
         df_gen = pd.DataFrame(columns=["time", "gen_GWh"])
+        # Compile generation for each year and interpolate missing values
         for year in range(year_0, year_N + 1):
-            filename = f"../inputs/entsoe_historic_inflow/{country}/Actual Generation per Production Type_{str(year)}01010000-{str(year+1)}01010000.csv"
+            filename = f"../inputs/entsoe_inflow/{country}/Actual Generation per Production Type_{str(year)}01010000-{str(year+1)}01010000.csv"
             df_gen_year = pd.read_csv(filename)
             df_gen_year = df_gen_year.interpolate()
             df_gen_year["time"] = df_gen_year["MTU"].apply(
@@ -403,6 +414,7 @@ def create_entsoe_inflow():
             )
             df_gen = pd.concat([df_gen, df_gen_year[["time", "gen_GWh"]]], axis=0)
         sum_gen = []
+        # Sum generation for each week
         for date in df_time.date:
             start_date = date
             end_date = date + dt.timedelta(days=7)
@@ -411,44 +423,51 @@ def create_entsoe_inflow():
                     (df_gen.time >= start_date) & (df_gen.time < end_date)
                 ].gen_GWh.sum()
             )
-        ds_old["gen"].loc[{"country": country}] = xr.DataArray(sum_gen, dims=("time"))
+        # Add generation to dataset
+        ds_raw["gen"].loc[{"country": country}] = xr.DataArray(sum_gen, dims=("time"))
 
     ## CALCULATE INFLOW ##
-    eff = 0.9**0.5
-    ds_old["inflow_GWh"] = (
-        ds_old["gen"] / eff  # energy that left the reservoir to generate electricity
-        + ds_old["delta_V"]  # energy that entered via water flowing into reservoir
+    eff = 0.9**0.5          # roundtrip efficiency of the hydro power plant assumed to be 90%
+    ds_raw["inflow_GWh"] = (
+        ds_raw["gen"] / eff  # energy that left the reservoir to generate electricity
+        + ds_raw["delta_V"]  # energy that entered via water flowing into reservoir
     )
 
     ## ADJUST INFLOW LEVELS ##
 
     ## 1. IDENTIFY WRONG FILLING LEVEL VALUES ##
-    ds_old["ratio_dV_maxGen"] = ds_old["delta_V"] / ds_old["gen"].max("time")
-    ds_new = ds_old.copy()
+    # Calculate the ratio of the change in filling level to the maximum generation in the week
+    ds_raw["ratio_dV_maxGen"] = ds_raw["delta_V"] / ds_raw["gen"].max("time")
+    # Create a copy of the dataset
+    ds_adj = ds_raw.copy()
 
     ratio_threshold = 1
 
-    ds_old["ratio_dV_maxGen"] = ds_old["ratio_dV_maxGen"].shift(time=1)
-    ds_new["V"] = ds_new["V"].where(ds_old["ratio_dV_maxGen"] > -ratio_threshold)
-    ds_old["ratio_dV_maxGen"] = ds_old["ratio_dV_maxGen"].shift(time=-1)
-    ds_new["V"] = ds_new.V.interpolate_na(dim="time", method="linear")
-    ds_new["delta_V"] = ds_new["V"].shift(time=-1) - ds_new["V"]
-    ds_new["inflow_GWh"] = ds_new["gen"] / eff + ds_new["delta_V"]
-    ds_new["ratio_dV_maxGen"] = ds_new["delta_V"] / ds_new["gen"].max("time")
+    # Remove filling level outliers, identified where the delta_V is greater than the maximum generation (i.e. ratio_dV_maxGen > -1)
+    ds_raw["ratio_dV_maxGen"] = ds_raw["ratio_dV_maxGen"].shift(time=1)
+    ds_adj["V"] = ds_adj["V"].where(ds_raw["ratio_dV_maxGen"] > -ratio_threshold)
+    ds_raw["ratio_dV_maxGen"] = ds_raw["ratio_dV_maxGen"].shift(time=-1)
+
+    # Interpolate missing values
+    ds_adj["V"] = ds_adj.V.interpolate_na(dim="time", method="linear")
+
+    # Re-calculate the change in filling level and inflow
+    ds_adj["delta_V"] = ds_adj["V"].shift(time=-1) - ds_adj["V"]
+    ds_adj["inflow_GWh"] = ds_adj["gen"] / eff + ds_adj["delta_V"]
 
     ## 2. REMOVE NEGATIVE INFLOW VALUES ##
-    ds_new["inflow_GWh"] = ds_new["inflow_GWh"].where(ds_new["inflow_GWh"] >= 0, 0)
+    ds_adj["inflow_GWh"] = ds_adj["inflow_GWh"].where(ds_adj["inflow_GWh"] >= 0, 0)
 
     ## OUTPUT DATASET AND REVOME UNNECESSARY VARIABLES ##
-    ds = ds_new.copy()
+    ds = ds_adj.copy()
     ds = ds.drop_vars(["V", "gen", "delta_V", "ratio_dV_maxGen"])
 
-    ds.to_netcdf("../inputs/entsoe_historic_inflow/historic_inflow.nc")
+    ds.to_netcdf("../inputs/entsoe_inflow/entsoe_inflow.nc")
     return None
 
 
 def open_entsoe_inflow():
-    file = glob.glob("../inputs/entsoe_historic_inflow/historic_inflow.nc")
+    file = glob.glob("../inputs/entsoe_inflow/entsoe_inflow.nc")
     if file == []:
         create_entsoe_inflow()
     ds_inflow = xr.open_dataset(file[0])
