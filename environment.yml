@@ -1,4 +1,4 @@
-name: CESM2energy_dev
+name: CESM2energy
 channels:
   - conda-forge
   - defaults
