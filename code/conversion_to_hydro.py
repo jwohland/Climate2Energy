@@ -257,6 +257,22 @@ def open_entsoe(tech):
     else:
         print("Technology not recognized. Please choose 'inflow' or 'ror'")
 
+def read_entso_countries(tech):
+    """
+    Reads the list of countries for which ENTSO-e data is available for the technology specified.
+    :param tech: string
+    """
+
+    folder_path = f"../inputs/entsoe_{tech}/"
+
+    # read all the folders in the path. Each folder corresponds to a country
+    country_list = [
+        folder
+        for folder in os.listdir(folder_path)
+        if os.path.isdir(os.path.join(folder_path, folder))
+    ]
+
+    return country_list
 
 def open_entsoe_ror():
     """
@@ -265,13 +281,8 @@ def open_entsoe_ror():
     year_0 = 2017
     year_N = 2022
 
-    folder_path = "../inputs/entsoe_ror/"
     # read all the folders in the path. Each folder corresponds to a country
-    country_list = [
-        folder
-        for folder in os.listdir(folder_path)
-        if os.path.isdir(os.path.join(folder_path, folder))
-    ]
+    country_list = read_entso_countries("ror")
 
     years = range(year_0, year_N + 1)
 
@@ -358,7 +369,7 @@ def create_entsoe_inflow():
     df_time = df_time.reset_index().drop(columns="index")
 
     ## COUNTRY LIST ##
-    country_list = ["AT", "BG", "FR", "IT", "ME", "NO", "PT", "RO", "ES", "SE", "CH"]
+    country_list = read_entso_countries("inflow")
 
     ## CREATE EMPTY DATASET ##
     # Create the placeholder data function
