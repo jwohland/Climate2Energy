@@ -24,16 +24,16 @@ def bias_correct_per_loc(reference, model, da, method="basic_quantile"):
         return bc.correct(method=method)
 
 
-def bias_correct_hydro(ds, ref, hist, method="basic_quantile"):
+def bias_correct_xarray(da, ref_da, hist_da, method="basic_quantile"):
     """
-    bias correction for hydro. bias corrects over time for each country present in the thre datasets
+    bias correction applied to use for xarray data arrays.
 
     """
     corrected = xr.apply_ufunc(
         bias_correct_per_loc,
-        ref,
-        hist,
-        ds,
+        ref_da,
+        hist_da,
+        da,
         vectorize=True,
         input_core_dims=[["time"], ["time"], ["time"]],
         exclude_dims=set(("time",)),
@@ -100,16 +100,5 @@ def bias_correct_dataset(ds, var, bc_realization, method="basic_quantile"):
     # the reference dataset has slightly different values for the dimension "lat" (max 10E-14) due to different segmentation in cdo/python. this fixes it
     reference["lat"] = model.lat
     # bias_correction
-    corrected = xr.apply_ufunc(
-        bias_correct_per_loc,
-        reference[var].load(),
-        model[var].load(),
-        ds[var].load(),
-        vectorize=True,
-        input_core_dims=[["time"], ["time"], ["time"]],
-        exclude_dims=set(("time",)),
-        output_core_dims=[["time"]],
-        kwargs={"method": method},
-    )
-    corrected["time"] = ds["time"]  # to restore time coordinate in dataarray
+    corrected = bias_correct_xarray(ds[var].load(), reference[var].load(), model[var].load())
     return corrected.squeeze()

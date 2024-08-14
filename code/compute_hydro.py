@@ -1,6 +1,6 @@
 import sys
 
-from bias_correction_methods import bias_correct_hydro
+from bias_correction_methods import bias_correct_xarray
 from conversion_to_hydro import *
 from utils import store_as_pandas_dataframe
 
@@ -31,11 +31,11 @@ if __name__ == "__main__":
     print("Bias correct CESM2")
     # Bias correction
     discharge_full = (
-        bias_correct_hydro(
+        bias_correct_xarray(
             discharge_full.discharge,
             era5_discharge_full.sel(time=slice("1995", "2014")).discharge.load(),
             discharge_full_for_bc.discharge,
-        )  # todo this would be nicer if the .discharge happen ins bias_correct_hydro to match the implementation for the other vars
+        )
         .to_dataset(name="discharge")
         .convert_calendar("proleptic_gregorian")
     )  # to get numpy datetime (necessary for weekly resampling)
