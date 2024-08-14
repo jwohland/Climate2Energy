@@ -257,6 +257,32 @@ def open_entsoe(tech):
     else:
         print("Technology not recognized. Please choose 'inflow' or 'ror'")
 
+def open_discharge_entsoe_for_calibration(era5_discharge):
+    """
+    Opens ENTSO-e data, and adds the corresponding era5 discharge data into the same xarray dataset
+    """
+    # ENTSO-e
+        calibration_ds = open_entsoe(tech)  # conversion data set for inflows/ror
+    # ERA5 discharge
+    [start, end] = calibration_ds.groupby("time.year").sum().year[[0, -1]].values # for calibration, we only use the years available from ENTSO-e for ERA5
+    era_discharge_for_calibration = era5_discharge.sel(
+        time=slice(str(start), str(end))
+    )["discharge"].sel(
+        country=calibration_ds.country
+    )  
+    if tech == "inflow":
+        time_range = calibration_ds.time[
+            [0, -1]
+        ].values  # find values of start and end date, to open era5 weekly correctly
+        era_discharge_for_calibration = resample_weekly(
+            era_discharge_for_calibration, time_range=time_range
+        )  # get era5 in weekly resolution
+    if tech == "ror":
+        era_discharge_for_calibration["time"] = (
+            calibration_ds.time
+        )  # ensuring same time stamp (discharge resamples to 11.30 every day and not 00.00)
+    calibration_ds["discharge"] = era_discharge_for_calibration
+    return calibration_ds
 def read_entso_countries(tech):
     """
     Reads the list of countries for which ENTSO-e data is available for the technology specified.

@@ -48,32 +48,14 @@ if __name__ == "__main__":
     for tech in technologies:
         print(f"Aggregate CESM2 and ERA5 for tech {tech}")
         discharge = weighted_aggregation(discharge_full, tech).discharge
+        if tech == "inflow":
+            discharge = resample_weekly(discharge)  # get cesm2 in weekly resolution
+
         era5_discharge = weighted_aggregation(era5_discharge_full, tech)
 
         # === calibration data (ENTSO-e and ERA5 (2016-2023) ===
         print(f"Open ENTSO-e data for tech {tech}")
-        # ENTSO-e
-        calibration_ds = open_entsoe(tech)  # conversion data set for inflows/ror
-        [start, end] = calibration_ds.groupby("time.year").sum().year[[0, -1]].values
-        era_discharge_for_calibration = era5_discharge.sel(
-            time=slice(str(start), str(end))
-        )["discharge"].sel(
-            country=calibration_ds.country
-        )  # for calibration, we only use the years available from ENTSO-e for ERA5
-        if tech == "inflow":
-            time_range = calibration_ds.time[
-                [0, -1]
-            ].values  # find values of start and end date, to open era5 weekly correctly
-            era_discharge_for_calibration = resample_weekly(
-                era_discharge_for_calibration, time_range=time_range
-            )  # get era5 in weekly resolution
-            discharge = resample_weekly(discharge)  # get cesm2 in weekly resolution
-        if tech == "ror":
-            era_discharge_for_calibration["time"] = (
-                calibration_ds.time
-            )  # ensuring same time stamp (discharge resamples to 11.30 every day and not 00.00)
-        calibration_ds["discharge"] = era_discharge_for_calibration
-
+        calibration_ds = open_discharge_entsoe_for_calibration(era5_discharge)
         # rolling means
         discharge = discharge.rolling(time=rolling[tech], center=True).mean().load()
         calibration_ds = (
