@@ -88,9 +88,17 @@ In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create o
 Save the csv file downloaded from ENTSO-e into the folder of the corresponding country.
 
 ### Download ENTSO-e power stats for scaling output to actual annual averages
-Download Monthly Domestic Values aggregated by country for 2021, 2022 and 2023 as .csv files, and save into folder `inputs/entsoe_inflow/`
+Download Monthly Domestic Values aggregated by country for 2021, 2022 and 2023 as .csv files, and save into folder `inputs/entsoe_scaling/`
 
 https://www.entsoe.eu/data/power-stats/
+
+### Download ERA5 data
+
+#### Discharge
+Download consolidated LISFLOOD ERA5 River discharge in the last 24 hours for the years 1995 to 2023. Make sure to select Europe with the following coordinates lat = (30,75), lon = (-15,50)
+https://cds.climate.copernicus.eu/cdsapp#!/dataset/cems-glofas-historical?tab=form
+
+The files should be added to the folder `inputs/ERA5/`, and should follow the naming structure "discharge_{year}.nc"
 
 ## Running CESM2Energy
 
@@ -110,7 +118,7 @@ We are currently using daily mean values for RSDS and TREFHT, while wind speed i
 Information of the grid used by the climate model needs to be provided for the bias correction. 
 The code reads grid information from `inputs/CESM_atm_grid.txt`.
 
-#### Bias correction (NEEDS UPDATING)
+#### Bias correction 
 Currently, the "ground truth" values used for bias correction comes from ERA5 data, regridded to CESM2 resolution (spatial + temporal). 
 
 ### Gaussian smoothed power curves from the windpowerlib
