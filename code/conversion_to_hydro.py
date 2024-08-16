@@ -200,7 +200,7 @@ def open_era(cesm_lat, cesm_lon):
         ds = ds.rename({"latitude": "lat", "longitude": "lon", "dis24": "discharge"})
         ds = ds.reindex(lat=ds.lat[::-1])
         ds_co = ds.coarsen(lat=10, lon=10, boundary="trim").sum()
-        # ds_co = select_Europe(ds_co)
+        ds_co = select_Europe(ds_co)
         # since the ERA5 grid is exactly 10 higher resolution than CESM2, the two grids should have the same length after selecting Europe. However, there might be slight differences in the absolute values of the grids (lat = 30.2 instead of 30.25) due to the coarsening. That is why we assign the lat and lon values of CESM2 here.
         if len(ds_co.lat) == len(cesm_lat) and len(ds_co.lon) == len(cesm_lon):
             ds_co["lat"] = cesm_lat
