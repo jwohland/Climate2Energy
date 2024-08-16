@@ -62,13 +62,43 @@ On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download run
 - Download the full year at Export Data>Actual Generation per Production Type (Year,CSV).
 The file name should have this format: "Actual Generation per Production Type_201501010000-201601010000.csv".
 
+### Download reservoir filling level and reservoir generation from ENTSO-e Transparency platform
+#### Reservoir filling level
+On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download reservoir filling level per each country:
+- Go to Generation>Water Reservoirs and Hydro Storage Plants
+- Select "Country" and in "Area" select the desired country.
+- Download the csv at Export Data>Water Reservoirs and Hydro Storage Plants (CSV).
+This will fetch a unique file that contains all reservoir filling levels from 2014 to the day of download.
+The file name should have this format: "Water Reservoirs and Hydro Storage Plants_201412290000-202412300000.csv".
+#### Reservoir generation
+On ENTSO-e Transparency platform (https://transparency.entsoe.eu/), download reservoir generation per each year per each country:
+- Go to Generation>Actual generation per production type
+- Select "Country" and in "Area" select the desired country.
+- In "Production Type" select only "Hydro Water Reservoir".
+- Download the full year at Export Data>Actual Generation per Production Type (Year,CSV).
+The file name should have this format: "Actual Generation per Production Type_201501010000-201601010000.csv".
+
+### Save the downloaded files into the input folder
+With Reservoir filling levels and Reservoir generation it will be possible to compute the historical energy inflow in reservoirs.
+
+In the folder `inputs`, create the folder `entsoe_inflow`. In this folder, create one folder per country, named with the country code, e.g. `AT`.
+Save the single reservoir filling level csv file downloaded (one file for all the years) and all the Reservoir generation files (one file per year, so multiple files) from ENTSO-e into the folder of the corresponding country.
+
 In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create one folder per country, named with the country code, e.g. `AT`.
 Save the csv file downloaded from ENTSO-e into the folder of the corresponding country.
 
 ### Download ENTSO-e power stats for scaling output to actual annual averages
-Download Monthly Domestic Values aggregated by country for 2021, 2022 and 2023 as .csv files, and save into folder `inputs/entsoe/`
+Download Monthly Domestic Values aggregated by country for 2021, 2022 and 2023 as .csv files, and save into folder `inputs/entsoe_scaling/`
 
 https://www.entsoe.eu/data/power-stats/
+
+### Download ERA5 data
+
+#### Discharge
+Download consolidated LISFLOOD ERA5 River discharge in the last 24 hours for the years 1995 to 2023. Make sure to select Europe with the following coordinates lat = (30,75), lon = (-15,50)
+https://cds.climate.copernicus.eu/cdsapp#!/dataset/cems-glofas-historical?tab=form
+
+The files should be added to the folder `inputs/ERA5/`, and should follow the naming structure "discharge_{year}.nc"
 
 ## Running CESM2Energy
 
@@ -88,7 +118,7 @@ We are currently using daily mean values for RSDS and TREFHT, while wind speed i
 Information of the grid used by the climate model needs to be provided for the bias correction. 
 The code reads grid information from `inputs/CESM_atm_grid.txt`.
 
-#### Bias correction (NEEDS UPDATING)
+#### Bias correction 
 Currently, the "ground truth" values used for bias correction comes from ERA5 data, regridded to CESM2 resolution (spatial + temporal). 
 
 ### Gaussian smoothed power curves from the windpowerlib

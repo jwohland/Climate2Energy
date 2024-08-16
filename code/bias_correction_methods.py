@@ -1,10 +1,10 @@
-import xarray as xr
-from bias_correction import BiasCorrection
-import subprocess
 import glob
-from utils import *
-import numpy as np
+import subprocess
+
 import pandas as pd
+from bias_correction import BiasCorrection
+
+from utils import *
 from utils import interpolate_wind_xr, find_height
 
 
@@ -24,6 +24,26 @@ def bias_correct_per_loc(reference, model, da, method="basic_quantile"):
         return bc.correct(method=method)
 
 
+def bias_correct_xarray(da, ref_da, hist_da, method="basic_quantile"):
+    """
+    bias correction applied to use for xarray data arrays.
+
+    """
+    corrected = xr.apply_ufunc(
+        bias_correct_per_loc,
+        ref_da,
+        hist_da,
+        da,
+        vectorize=True,
+        input_core_dims=[["time"], ["time"], ["time"]],
+        exclude_dims=set(("time",)),
+        output_core_dims=[["time"]],
+        kwargs={"method": method},
+    )
+    corrected["time"] = da["time"]  # to restore time coordinate in dataarray
+    return corrected.squeeze()
+
+
 def prepare_bias_correction(bc_realization):
     """
     Prepare bias correction input files using CESM2 realization
@@ -39,15 +59,21 @@ def prepare_bias_correction(bc_realization):
         mod_file = f"../output/bias_correction/{bc_realization}/Raw_CESM2_{var}_{bc_realization}.nc"
         if glob.glob(ref_file) == []:
             print(f"missing historical ERA5 file for {var}")
-            subprocess.run(
-                ["bash", f"preprocess/preprocess_{var}_ERA5.sh"]
-            )
+            subprocess.run(["bash", f"preprocess/preprocess_{var}_ERA5.sh"])
         if glob.glob(mod_file) == []:
-            print(f"missing historical model file for {var} for historical realization {bc_realization}")
+            print(
+                f"missing historical model file for {var} for historical realization {bc_realization}"
+            )
             bc_identifier = CESM2_REALIZATION_DICT["historical"][bc_realization]
             subprocess.run(
-                ["bash", f"preprocess/preprocess_{var}_CESM2.sh", bc_realization, bc_identifier]
+                [
+                    "bash",
+                    f"preprocess/preprocess_{var}_CESM2.sh",
+                    bc_realization,
+                    bc_identifier,
+                ]
             )
+
 
 def bias_correct_dataset(ds, var, bc_realization, method="basic_quantile"):
     """
@@ -74,16 +100,5 @@ def bias_correct_dataset(ds, var, bc_realization, method="basic_quantile"):
     # the reference dataset has slightly different values for the dimension "lat" (max 10E-14) due to different segmentation in cdo/python. this fixes it
     reference["lat"] = model.lat
     # bias_correction
-    corrected = xr.apply_ufunc(
-        bias_correct_per_loc,
-        reference[var].load(),
-        model[var].load(),
-        ds[var].load(),
-        vectorize=True,
-        input_core_dims=[["time"], ["time"], ["time"]],
-        exclude_dims=set(("time",)),
-        output_core_dims=[["time"]],
-        kwargs={"method": method},
-    )
-    corrected["time"] = ds["time"]  # to restore time coordinate in dataarray
+    corrected = bias_correct_xarray(ds[var].load(), reference[var].load(), model[var].load())
     return corrected.squeeze()

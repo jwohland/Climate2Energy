@@ -8,6 +8,7 @@ def get_country_list():
     Leonard Goeke and Jonas Savelsberg
     :return:
     """
+
     countries = [
         "Albania",
         "Austria",
@@ -26,18 +27,18 @@ def get_country_list():
         "Croatia",
         "Hungary",
         "Ireland",
-        "Italy",
+        "Italy",  # several bidding zones
         "Lithuania",
         "Latvia",
         "Montenegro",
         "Macedonia",
         "Netherlands",
-        "Norway",
+        "Norway",  # several bidding zones
         "Poland",
         "Portugal",
         "Romania",
         "Serbia",
-        "Sweden",
+        "Sweden",  # several bidding zones
         "Slovenia",
         "Slovakia",
         "United Kingdom",

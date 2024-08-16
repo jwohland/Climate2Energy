@@ -187,7 +187,6 @@ def store_as_pandas_dataframe(ds, name, path):
     ds.to_pandas().to_csv(f"{path}output_variables/" + name + ".csv")
 
 
-#
 def interpolate_wind_xr(ds, output_height=120):
     """
     Calculates wind speeds at output height using data at evolving heights and
@@ -245,7 +244,11 @@ def create_directories():
         for realization in ["A", "B", "C"]
         for sub_folder in ["atmospheric_variables", "output_variables"]
     ]
-    required_directories.append("../plots/")  # plots
+    required_directories.extend(
+        [
+            "../plots/",
+        ]
+    )  # plots,
 
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
@@ -274,9 +277,7 @@ def add_target_pressure_level(ds, target_height):
     return ds
 
 
-def compute_density_target(
-    ds, target_height=120
-):
+def compute_density_target(ds, target_height=120):
     """
     Interpolation of atmospheric density which is reported
     between model levels to the pressure level that corresponds
