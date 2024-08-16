@@ -40,7 +40,7 @@ def bias_correct_xarray(da, ref_da, hist_da, method="basic_quantile"):
         output_core_dims=[["time"]],
         kwargs={"method": method},
     )
-    corrected["time"] = ds["time"]  # to restore time coordinate in dataarray
+    corrected["time"] = da["time"]  # to restore time coordinate in dataarray
     return corrected.squeeze()
 
 

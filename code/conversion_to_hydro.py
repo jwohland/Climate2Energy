@@ -157,10 +157,11 @@ def create_discharge(scenario, realization):
         .mean()
     )
     # downscale and save
+    output = get_output_path("A", scenario, realization)
     downscale(
         discharge,
         runoff,
-        f"{get_output_path("A", scenario, realization)}/atmospheric_variables/CESM2_discharge.nc",
+        f"{output}/atmospheric_variables/CESM2_discharge.nc",
     )
 
 
@@ -169,7 +170,8 @@ def open_discharge(scenario, realization):
     Opens and preprocesses discharge data (see function preprocess_cesm_discharge) for a certain year. If end year is passed as an int, it opens all years between year and end_year (included)
     :param scenario, realization: str
     """
-    filename = f"{get_output_path("A", scenario, realization)}/atmospheric_variables/CESM2_discharge.nc"
+    output = get_output_path("A", scenario, realization)
+    filename = f"{output}/atmospheric_variables/CESM2_discharge.nc"
     try:
         ds = xr.open_dataset(filename)
     except FileNotFoundError:
@@ -257,12 +259,12 @@ def open_entsoe(tech):
     else:
         print("Technology not recognized. Please choose 'inflow' or 'ror'")
 
-def open_discharge_entsoe_for_calibration(era5_discharge):
+def open_discharge_entsoe_for_calibration(era5_discharge,tech):
     """
     Opens ENTSO-e data, and adds the corresponding era5 discharge data into the same xarray dataset
     """
     # ENTSO-e
-        calibration_ds = open_entsoe(tech)  # conversion data set for inflows/ror
+    calibration_ds = open_entsoe(tech)  # conversion data set for inflows/ror
     # ERA5 discharge
     [start, end] = calibration_ds.groupby("time.year").sum().year[[0, -1]].values # for calibration, we only use the years available from ENTSO-e for ERA5
     era_discharge_for_calibration = era5_discharge.sel(
@@ -298,7 +300,7 @@ def read_entso_countries(tech):
         if os.path.isdir(os.path.join(folder_path, folder))
     ]
 
-    return country_list
+    return country_list,folder_path
 
 def open_entsoe_ror():
     """
@@ -308,7 +310,7 @@ def open_entsoe_ror():
     year_N = 2022
 
     # read all the folders in the path. Each folder corresponds to a country
-    country_list = read_entso_countries("ror")
+    country_list,folder_path = read_entso_countries("ror")
 
     years = range(year_0, year_N + 1)
 
@@ -395,8 +397,7 @@ def create_entsoe_inflow():
     df_time = df_time.reset_index().drop(columns="index")
 
     ## COUNTRY LIST ##
-    country_list = read_entso_countries("inflow")
-
+    country_list,folder_path = read_entso_countries("inflow")
     ## CREATE EMPTY DATASET ##
     # Create the placeholder data function
     def create_placeholder_data():
@@ -405,7 +406,7 @@ def create_entsoe_inflow():
     coords={"country": country_list, "time": df_time.date},
     data_vars={x: (["country", "time"], create_placeholder_data()) for x in ["V", "gen", "delta_V", "inflow_GWh"]},
     )
-
+    
     ## READ FILLING LEVELS ##
     for country in tqdm(country_list, desc="Reading filling levels per country"):
         filename = f"../inputs/entsoe_inflow/{country}/Water Reservoirs and Hydro Storage Plants_201412290000-202412300000.csv"
@@ -507,6 +508,7 @@ def open_entsoe_inflow():
     file = glob.glob("../inputs/entsoe_inflow/entsoe_inflow.nc")
     if file == []:
         create_entsoe_inflow()
+        file = glob.glob("../inputs/entsoe_inflow/entsoe_inflow.nc")
     ds_inflow = xr.open_dataset(file[0])
 
     return ds_inflow

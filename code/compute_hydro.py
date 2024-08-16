@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
         # === calibration data (ENTSO-e and ERA5 (2016-2023) ===
         print(f"Open ENTSO-e data for tech {tech}")
-        calibration_ds = open_discharge_entsoe_for_calibration(era5_discharge)
+        calibration_ds = open_discharge_entsoe_for_calibration(era5_discharge,tech)
         # rolling means
         discharge = discharge.rolling(time=rolling[tech], center=True).mean().load()
         calibration_ds = (
