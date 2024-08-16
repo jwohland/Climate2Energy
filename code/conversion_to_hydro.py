@@ -213,7 +213,7 @@ def open_era(cesm_lat, cesm_lon):
     except FileNotFoundError:
         print("ERA5 discharge files not found. Creating them.")
         files = [
-            f"/net/xenon/climphys/lbloin/CESM2energy_data/ERA5_discharge/discharge_{year}.nc"
+            f"../inputs/ERA5/discharge_{year}.nc"
             for year in range(1995, 2023)
         ]  # historical+calbration ERA5 data
         ds_era5 = xr.open_mfdataset(files, preprocess=preprocess_era, combine="nested")

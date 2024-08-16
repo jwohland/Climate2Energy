@@ -247,11 +247,8 @@ def create_directories():
     required_directories.extend(
         [
             "../plots/",
-            "../inputs/entsoe_ror/",
-            "../inputs/entsoe_inflow/",
-            "../inputs/entsoe_scaling/",
         ]
-    )  # plots, + entsoe input folders
+    )  # plots,
 
     for directory in required_directories:
         makedirs(directory, exist_ok=True)  # only create them if they do not exist yet
