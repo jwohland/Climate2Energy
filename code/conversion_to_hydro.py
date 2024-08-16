@@ -13,7 +13,6 @@ from utils import (
     zero_mean_longitudes,
     select_Europe,
     get_time_range,
-    get_qu_75,
     CESM2_REALIZATION_DICT,
     get_output_path,
 )
@@ -630,7 +629,8 @@ def get_pwlf(calibration_ds, tech):
     :param tech: str
     """
     # get 75th percentile
-    q = get_qu_75(calibration_ds).values
+    q = calibration_ds.discharge.quantile(0.75,skipna=True).values
+    #print(q)#get_qu_75(calibration_ds).values
     # calibration parameters
     calib = calibration_ds.dropna(dim="time")
     x = calib.discharge.values
