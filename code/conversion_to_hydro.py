@@ -230,7 +230,7 @@ def resample_weekly(ds, time_range=[]):
     :param time_range: list (empty if not used)
     """
     if len(time_range) == 2:
-        ds.sel(
+        ds = ds.sel(
             time=slice(
                 time_range[0] + pd.Timedelta(days=0),
                 time_range[1] + pd.Timedelta(days=7),
@@ -450,16 +450,12 @@ def create_entsoe_inflow():
                 / 1000
             )
             df_gen = pd.concat([df_gen, df_gen_year[["time", "gen_GWh"]]], axis=0)
-        sum_gen = []
-        # Sum generation for each week
-        for date in df_time.date:
-            start_date = date
-            end_date = date + dt.timedelta(days=7)
-            sum_gen.append(
-                df_gen[
-                    (df_gen.time >= start_date) & (df_gen.time < end_date)
-                ].gen_GWh.sum()
-            )
+        # get weekly data
+        sum_gen = resample_weekly(df_gen.set_index(
+            'time'
+        ).to_xarray().sortby('time').gen_GWh,
+                                  [df_time["date"].iloc[0],df_time["date"].iloc[-1]], #to get the right time range
+                                 )
         # Add generation to dataset
         ds_raw["gen"].loc[{"country": country}] = xr.DataArray(sum_gen, dims=("time"))
 
