@@ -57,9 +57,9 @@ if __name__ == "__main__":
         print(f"Open ENTSO-e data for tech {tech}")
         calibration_ds = open_discharge_entsoe_for_calibration(era5_discharge,tech)
         # rolling means
-        discharge = discharge.rolling(time=rolling[tech], center=True).mean().load()
+        discharge = discharge.rolling(time=rolling[tech], center=True, min_periods=1).mean().load()
         calibration_ds = (
-            calibration_ds.rolling(time=rolling[tech], center=True).mean().load()
+            calibration_ds.rolling(time=rolling[tech], center=True, min_periods=1).mean().load()
         )
         # make sure that only countries present in calibration_ds are present in discharge
         discharge = discharge.sel(country=calibration_ds.country)
