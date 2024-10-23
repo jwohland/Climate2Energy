@@ -534,7 +534,7 @@ def weighted_aggregation(ds_discharge, tech):
     df_jrc = pd.read_csv(file_path)
     country_list = df_jrc["country_code"].unique().tolist()
 
-    file_name = "../inputs/normalized_capacity_{tech}.nc"
+    file_name = f"../inputs/normalized_capacity_{tech}.nc"
     try:
         ds_C = xr.open_dataset(file_name)
     except FileNotFoundError:
