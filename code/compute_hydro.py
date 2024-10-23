@@ -92,6 +92,9 @@ if __name__ == "__main__":
                 time=discharge.time,
             ),
         ).to_dataset(name=f"{tech}_GWh")
+
+        transferred = transferred.where(transferred > 0, 0)
+
         Scaled_total_transfer = scale_up(transferred, tech)
 
         print(f"Conversion for tech {tech} done. Now saving")
