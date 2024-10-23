@@ -137,6 +137,12 @@ def create_discharge(scenario, realization):
         files_run.append(
             f"{path}lnd/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.clm2.h6.{year}-01-01-03600.nc"
         )
+    # add the last file. example: 2100-01-01 has info about 2099-12-31, so needs to be added
+    year = year + 1 #year after last year in time range
+    month = "01"
+    files_dis.append(
+        f"{path}rof/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.mosart.h0.{year}-{month}.nc"
+    )
     # get monthly discharge
     discharge = xr.open_mfdataset(
         files_dis, preprocess=preprocess_hydro_cesm, combine="nested"
