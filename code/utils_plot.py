@@ -15,6 +15,8 @@ tech_filter_dict = {
     "E-126_offshore": "*E-126*onshore_False*",
     "heating": "heating*",
     "cooling": "cooling*",
+    "Hydropower (dam)": "hydro_inflow*",
+    "Hydropower (ror)": "hydro_ror*",
 }
 
 df_colors = pd.DataFrame(

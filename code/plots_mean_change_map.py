@@ -245,10 +245,6 @@ def plot_roses():
             inplace=True,
         )
 
-        # Adding placeholders for hydro for now  # todo delete later
-        df_country["Hydropower (dam)"] = [100, 0, 0]
-        df_country["Hydropower (ror)"] = [100, 0, 0]
-
         # Add colors
         df_country = pd.concat([df_country, df_colors])
 
