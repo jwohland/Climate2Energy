@@ -253,15 +253,16 @@ def plot_roses():
             columns={"heating": "Heating", "cooling": "Cooling"}, inplace=True
         )
 
-        # Make sure countries without offshore domain or AC are also plotted
+        # Make sure countries without offshore domain, AC or hydropower are also plotted
         if df_offshore.isna().any():
             df_country["Wind offshore"]["Change"] = 100
             df_country["Wind offshore"]["Error_minus"] = 0
             df_country["Wind offshore"]["Error_plus"] = 0
-        if df_country["Cooling"].isna().any():
-            df_country["Cooling"]["Change"] = 100
-            df_country["Cooling"]["Error_minus"] = 0
-            df_country["Cooling"]["Error_plus"] = 0
+        for potentially_nan_tech in ["Cooling", "Hydropower (dam)", "Hydropower (ror)"]:
+            if df_country[potentially_nan_tech].isna().any():
+                df_country[potentially_nan_tech]["Change"] = 100
+                df_country[potentially_nan_tech]["Error_minus"] = 0
+                df_country[potentially_nan_tech]["Error_plus"] = 0
 
         # Sort dataframe in same order as in legend figure
         df_country = df_country[

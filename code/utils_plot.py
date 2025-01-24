@@ -162,6 +162,39 @@ def compute_metrics_all_sims(metrics=["mean", "q05", "q95"]):
                     )
         with open(filename, "wb") as f:
             pickle.dump(df_dict, f)
+    df_dict = unify_hydro_country_names(df_dict)
+    return df_dict
+
+
+def unify_hydro_country_names(df_dict):
+    """
+    Currently the hydropower country codes (2 letter) are different from the rest (full names).
+    This function aligns them and should become obsolete in future versions of the code.
+
+
+    :param df_dict:
+    :return:
+    """
+    unify_country_names = {
+        "AT": "Austria",
+        "BG": "Bulgaria",
+        "CH": "Switzerland",
+        "ES": "Spain",
+        "FR": "France",
+        "IT": "Italy",
+        "ME": "Montenegro",
+        "NO": "Norway",
+        "PT": "Portugal",
+        "RO": "Romania",
+        "SE": "Sweden",
+    }
+    for scenario in ["SSP370", "historical"]:
+        for tech in ["Hydropower (dam)", "Hydropower (ror)"]:
+            for metric in ["mean", "q05", "q95"]:
+                for realization in ["AA", "AB", "AC"]:
+                    df_dict[scenario][tech][metric][realization].rename(
+                        unify_country_names, inplace=True
+                    )
     return df_dict
 
 
