@@ -179,6 +179,7 @@ def unify_hydro_country_names(df_dict):
         "AT": "Austria",
         "BG": "Bulgaria",
         "CH": "Switzerland",
+        "DE": "Germany",
         "ES": "Spain",
         "FR": "France",
         "IT": "Italy",
@@ -191,10 +192,9 @@ def unify_hydro_country_names(df_dict):
     for scenario in ["SSP370", "historical"]:
         for tech in ["Hydropower (dam)", "Hydropower (ror)"]:
             for metric in ["mean", "q05", "q95"]:
-                for realization in ["AA", "AB", "AC"]:
-                    df_dict[scenario][tech][metric][realization].rename(
-                        unify_country_names, inplace=True
-                    )
+                df_dict[scenario][tech][metric].rename(
+                    unify_country_names, inplace=True
+                )
     return df_dict
 
 
