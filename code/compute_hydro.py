@@ -95,15 +95,13 @@ if __name__ == "__main__":
 
         transferred = transferred.where(transferred > 0, 0)
 
-        Scaled_total_transfer = scale_up(transferred, tech)
-
         print(f"Conversion for tech {tech} done. Now saving")
         # ===========================
         # === Step 3: Save output ===
         # ===========================
         for year in get_time_range(scenario):
             store_as_pandas_dataframe(
-                Scaled_total_transfer[f"{tech}_GWh"],
+                transferred[f"{tech}_GWh"],
                 f"hydro_{tech}_{year}",
                 get_output_path(bc_realization, scenario, realization),
             )

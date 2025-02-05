@@ -258,11 +258,12 @@ def open_entsoe(tech):
     :param tech: string
     """
     if tech == "inflow":
-        return open_entsoe_inflow()
+        ds = open_entsoe_inflow()
     elif tech == "ror":
-        return open_entsoe_ror()
+        ds = open_entsoe_ror()
     else:
         print("Technology not recognized. Please choose 'inflow' or 'ror'")
+    return scale_up(ds,tech)
 
 def open_discharge_entsoe_for_calibration(era5_discharge,tech):
     """
@@ -648,7 +649,7 @@ def get_pwlf(calibration_ds, tech):
     return [a1_opt, b1_opt, a2_opt, b2_opt], q
 
 
-def read_annual_prod(countries, tech):
+def read_power_stats_prod(countries, tech):
     """
     Reads the annual production of hydropower for each country of interest, for the hydropower technology specified
     :param countries: list of country codes
@@ -704,19 +705,7 @@ def scale_up(ds, tech):
     :param ds: DataArray of transformed discharge-to-hydro, per country
     :param tech: string
     """
-    prod_per_country = read_annual_prod(ds.country.values, tech)
-    scaled_output = []
-    for country in ds.country:
-        ann_prod = prod_per_country.sel(country=country)
-        day_by_day = ds.sel(country=country)
-        nb_years = len(
-            day_by_day.groupby("time.year").sum().year
-        )  # number of years in total
-        ann_prod_non_scaled = (
-            day_by_day[f"{tech}_GWh"].sum() / nb_years
-        )  # average yearly values for this dataset
-        scaled = day_by_day * (ann_prod.values / ann_prod_non_scaled.values)
-        scaled_output.append(scaled)
-    scaled_output = xr.concat(scaled_output, dim="country")
-    scaled_output["country"] = list(ds.country.values)
+    annual_reported_production = read_power_stats_prod(ds.country.values, tech)
+    annual_mean_production_here = ds.groupby("time.year").sum("time").mean("year")
+    scaled_output = (ds * (annual_reported_production/annual_mean_production_here))
     return scaled_output
