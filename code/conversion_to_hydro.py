@@ -539,7 +539,8 @@ def weighted_aggregation(ds_discharge, tech):
     # Load the JRC dataset
     file_path = "../inputs/jrc-hydro-power-plant-database.csv"
     df_jrc = pd.read_csv(file_path)
-    country_list = df_jrc["country_code"].unique().tolist()
+    country_code_list = df_jrc["country_code"].unique().tolist()
+    country_name_list = [country_code_to_country_name(country_code) for country_code in country_code_list]
 
     file_name = f"../inputs/normalized_capacity_{tech}.nc"
     try:
@@ -561,15 +562,15 @@ def weighted_aggregation(ds_discharge, tech):
             data_vars=dict(
                 normalized_capacity=(
                     ["lat", "lon", "country"],
-                    np.zeros((len(lat), len(lon), len(country_list))),
+                    np.zeros((len(lat), len(lon), len(country_name_list))),
                 ),
             ),
-            coords=dict(country=country_list, lat=lat, lon=lon),
+            coords=dict(country=country_name_list, lat=lat, lon=lon),
             attrs=dict(description="Installed hydro capacity (normalized per country)"),
         )
 
         # Fill the dataset
-        for country_code in country_list:
+        for country_code, country_name in zip(country_code_list, country_name_list):
             Capacities_JRC = np.zeros((len(lat), len(lon)))
             for ii in range(len(lon)):
                 for jj in range(len(lat)):
@@ -586,25 +587,27 @@ def weighted_aggregation(ds_discharge, tech):
                         & (df_jrc["lat"] < lat_edge[jj + 1])
                     ].sum()
             # Normalize capacities such that sum over each country yields one
-            ds_C.normalized_capacity.loc[{"country": country_code}] = (
+            ds_C.normalized_capacity.loc[{"country": country_name}] = (
                 Capacities_JRC[:, :]
                 / df_jrc["installed_capacity_MW"][
                     (df_jrc["type"].isin(type_code))
                     & (df_jrc["country_code"] == country_code)
                 ].sum()
-            )
+            )        
         ds_C.to_netcdf(file_name)
         print("Normalized capacity " + tech + " dataset saved")
 
     # Calculate the discharge per country
     ds_discharge_weighted = []
-    for country in country_list:
+    for country in country_name_list:
         ds = (
             ds_C.normalized_capacity.sel(country=country) * ds_discharge.discharge
         ).sum(("lat", "lon"))
         ds_discharge_weighted.append(ds)
+    
     ds_discharge_weighted = xr.concat(ds_discharge_weighted, dim="country")
     ds_discharge_weighted = ds_discharge_weighted.to_dataset(name="discharge")
+
     return ds_discharge_weighted
 
 
@@ -709,3 +712,41 @@ def scale_up(ds, tech):
     annual_mean_production_here = ds.groupby("time.year").sum("time").mean("year")
     scaled_output = (ds * (annual_reported_production/annual_mean_production_here))
     return scaled_output
+
+
+
+def country_code_to_country_name(code):
+    country_codes = {
+        'CH': 'Switzerland',
+        'IT': 'Italy',
+        'FR': 'France',
+        'SK': 'Slovakia',
+        'DE': 'Germany',
+        'ES': 'Spain',
+        'AT': 'Austria',
+        'SI': 'Slovenia',
+        'SE': 'Sweden',
+        'UK': 'United Kingdom',
+        'FI': 'Finland',
+        'EL': 'Greece',
+        'RO': 'Romania',
+        'AL': 'Albania',
+        'BG': 'Bulgaria',
+        'HR': 'Croatia',
+        'PT': 'Portugal',
+        'MK': 'Macedonia',
+        'RS': 'Serbia',
+        'CZ': 'Czech Republic',
+        'ME': 'Montenegro',
+        'BA': 'Bosnia and Herzegovina',
+        'HU': 'Hungary',
+        'IE': 'Ireland',
+        'PL': 'Poland',
+        'BE': 'Belgium',
+        'LV': 'Latvia',
+        'LT': 'Lithuania',
+        'XK': 'Kosovo',
+        'NO': 'Norway'
+    }
+    
+    return country_codes[code]
