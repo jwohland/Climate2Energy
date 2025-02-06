@@ -81,10 +81,10 @@ The file name should have this format: "Actual Generation per Production Type_20
 ### Save the downloaded files into the input folder
 With Reservoir filling levels and Reservoir generation it will be possible to compute the historical energy inflow in reservoirs.
 
-In the folder `inputs`, create the folder `entsoe_inflow`. In this folder, create one folder per country, named with the country code, e.g. `AT`.
+In the folder `inputs`, create the folder `entsoe_inflow`. In this folder, create one folder per country, named with the country name, e.g. `Austria`. Make sure the names are capitalized.
 Save the single reservoir filling level csv file downloaded (one file for all the years) and all the Reservoir generation files (one file per year, so multiple files) from ENTSO-e into the folder of the corresponding country.
 
-In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create one folder per country, named with the country code, e.g. `AT`.
+In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create one folder per country, named with the country name, e.g. `Austria`. Make sure the names are capitalized.
 Save the csv file downloaded from ENTSO-e into the folder of the corresponding country.
 
 ### Download ENTSO-e power stats for scaling output to actual annual averages
