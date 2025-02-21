@@ -55,11 +55,17 @@ if __name__ == "__main__":
 
         # === calibration data (ENTSO-e and ERA5 (2016-2023) ===
         print(f"Open ENTSO-e data for tech {tech}")
-        calibration_ds = open_discharge_entsoe_for_calibration(era5_discharge,tech)
+        calibration_ds = open_discharge_entsoe_for_calibration(era5_discharge, tech)
         # rolling means
-        discharge = discharge.rolling(time=rolling[tech], center=True, min_periods=1).mean().load()
+        discharge = (
+            discharge.rolling(time=rolling[tech], center=True, min_periods=1)
+            .mean()
+            .load()
+        )
         calibration_ds = (
-            calibration_ds.rolling(time=rolling[tech], center=True, min_periods=1).mean().load()
+            calibration_ds.rolling(time=rolling[tech], center=True, min_periods=1)
+            .mean()
+            .load()
         )
         # make sure that only countries present in calibration_ds are present in discharge
         discharge = discharge.sel(country=calibration_ds.country)
@@ -95,15 +101,13 @@ if __name__ == "__main__":
 
         transferred = transferred.where(transferred > 0, 0)
 
-        Scaled_total_transfer = scale_up(transferred, tech)
-
         print(f"Conversion for tech {tech} done. Now saving")
         # ===========================
         # === Step 3: Save output ===
         # ===========================
         for year in get_time_range(scenario):
             store_as_pandas_dataframe(
-                Scaled_total_transfer[f"{tech}_GWh"],
+                transferred[f"{tech}_GWh"],
                 f"hydro_{tech}_{year}",
                 get_output_path(bc_realization, scenario, realization),
             )

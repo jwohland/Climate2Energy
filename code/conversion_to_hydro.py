@@ -138,7 +138,7 @@ def create_discharge(scenario, realization):
             f"{path}lnd/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.clm2.h6.{year}-01-01-03600.nc"
         )
     # add the last file. example: 2100-01-01 has info about 2099-12-31, so needs to be added
-    year = year + 1 #year after last year in time range
+    year = year + 1  # year after last year in time range
     month = "01"
     files_dis.append(
         f"{path}rof/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.mosart.h0.{year}-{month}.nc"
@@ -219,8 +219,7 @@ def open_era(cesm_lat, cesm_lon):
     except FileNotFoundError:
         print("ERA5 discharge files not found. Creating them.")
         files = [
-            f"../inputs/ERA5/discharge_{year}.nc"
-            for year in range(1995, 2023)
+            f"../inputs/ERA5/discharge_{year}.nc" for year in range(1995, 2023)
         ]  # historical+calbration ERA5 data
         ds_era5 = xr.open_mfdataset(files, preprocess=preprocess_era, combine="nested")
         ds_era5.to_netcdf(f"../output/bias_correction/Raw_ERA5_discharge.nc")
@@ -258,25 +257,27 @@ def open_entsoe(tech):
     :param tech: string
     """
     if tech == "inflow":
-        return open_entsoe_inflow()
+        ds = open_entsoe_inflow()
     elif tech == "ror":
-        return open_entsoe_ror()
+        ds = open_entsoe_ror()
     else:
         print("Technology not recognized. Please choose 'inflow' or 'ror'")
+    return scale_up(ds, tech)
 
-def open_discharge_entsoe_for_calibration(era5_discharge,tech):
+
+def open_discharge_entsoe_for_calibration(era5_discharge, tech):
     """
     Opens ENTSO-e data, and adds the corresponding era5 discharge data into the same xarray dataset
     """
     # ENTSO-e
     calibration_ds = open_entsoe(tech)  # conversion data set for inflows/ror
     # ERA5 discharge
-    [start, end] = calibration_ds.groupby("time.year").sum().year[[0, -1]].values # for calibration, we only use the years available from ENTSO-e for ERA5
+    [start, end] = (
+        calibration_ds.groupby("time.year").sum().year[[0, -1]].values
+    )  # for calibration, we only use the years available from ENTSO-e for ERA5
     era_discharge_for_calibration = era5_discharge.sel(
         time=slice(str(start), str(end))
-    )["discharge"].sel(
-        country=calibration_ds.country
-    )  
+    )["discharge"].sel(country=calibration_ds.country)
     if tech == "inflow":
         time_range = calibration_ds.time[
             [0, -1]
@@ -290,6 +291,8 @@ def open_discharge_entsoe_for_calibration(era5_discharge,tech):
         )  # ensuring same time stamp (discharge resamples to 11.30 every day and not 00.00)
     calibration_ds["discharge"] = era_discharge_for_calibration
     return calibration_ds
+
+
 def read_entso_countries(tech):
     """
     Reads the list of countries for which ENTSO-e data is available for the technology specified.
@@ -305,7 +308,8 @@ def read_entso_countries(tech):
         if os.path.isdir(os.path.join(folder_path, folder))
     ]
 
-    return country_list,folder_path
+    return country_list, folder_path
+
 
 def open_entsoe_ror():
     """
@@ -315,7 +319,7 @@ def open_entsoe_ror():
     year_N = 2022
 
     # read all the folders in the path. Each folder corresponds to a country
-    country_list,folder_path = read_entso_countries("ror")
+    country_list, folder_path = read_entso_countries("ror")
 
     years = range(year_0, year_N + 1)
 
@@ -402,16 +406,21 @@ def create_entsoe_inflow():
     df_time = df_time.reset_index().drop(columns="index")
 
     ## COUNTRY LIST ##
-    country_list,folder_path = read_entso_countries("inflow")
+    country_list, folder_path = read_entso_countries("inflow")
+
     ## CREATE EMPTY DATASET ##
     # Create the placeholder data function
     def create_placeholder_data():
         return np.full((len(country_list), len(df_time)), np.nan)
+
     ds_raw = xr.Dataset(
-    coords={"country": country_list, "time": df_time.date},
-    data_vars={x: (["country", "time"], create_placeholder_data()) for x in ["V", "gen", "delta_V", "inflow_GWh"]},
+        coords={"country": country_list, "time": df_time.date},
+        data_vars={
+            x: (["country", "time"], create_placeholder_data())
+            for x in ["V", "gen", "delta_V", "inflow_GWh"]
+        },
     )
-    
+
     ## READ FILLING LEVELS ##
     for country in tqdm(country_list, desc="Reading filling levels per country"):
         filename = f"../inputs/entsoe_inflow/{country}/Water Reservoirs and Hydro Storage Plants_201412290000-202412300000.csv"
@@ -457,16 +466,18 @@ def create_entsoe_inflow():
             )
             df_gen = pd.concat([df_gen, df_gen_year[["time", "gen_GWh"]]], axis=0)
         # get weekly data
-        sum_gen = resample_weekly(df_gen.set_index(
-            'time'
-        ).to_xarray().sortby('time').gen_GWh,
-                                  [df_time["date"].iloc[0],df_time["date"].iloc[-1]], #to get the right time range
-                                 )
+        sum_gen = resample_weekly(
+            df_gen.set_index("time").to_xarray().sortby("time").gen_GWh,
+            [
+                df_time["date"].iloc[0],
+                df_time["date"].iloc[-1],
+            ],  # to get the right time range
+        )
         # Add generation to dataset
         ds_raw["gen"].loc[{"country": country}] = xr.DataArray(sum_gen, dims=("time"))
 
     ## CALCULATE INFLOW ##
-    eff = 0.9**0.5          # roundtrip efficiency of the hydro power plant assumed to be 90%
+    eff = 0.9**0.5  # roundtrip efficiency of the hydro power plant assumed to be 90%
     ds_raw["inflow_GWh"] = (
         ds_raw["gen"] / eff  # energy that left the reservoir to generate electricity
         + ds_raw["delta_V"]  # energy that entered via water flowing into reservoir
@@ -538,7 +549,10 @@ def weighted_aggregation(ds_discharge, tech):
     # Load the JRC dataset
     file_path = "../inputs/jrc-hydro-power-plant-database.csv"
     df_jrc = pd.read_csv(file_path)
-    country_list = df_jrc["country_code"].unique().tolist()
+    country_code_list = df_jrc["country_code"].unique().tolist()
+    country_name_list = [
+        country_code_to_country_name(country_code) for country_code in country_code_list
+    ]
 
     file_name = f"../inputs/normalized_capacity_{tech}.nc"
     try:
@@ -560,15 +574,15 @@ def weighted_aggregation(ds_discharge, tech):
             data_vars=dict(
                 normalized_capacity=(
                     ["lat", "lon", "country"],
-                    np.zeros((len(lat), len(lon), len(country_list))),
+                    np.zeros((len(lat), len(lon), len(country_name_list))),
                 ),
             ),
-            coords=dict(country=country_list, lat=lat, lon=lon),
+            coords=dict(country=country_name_list, lat=lat, lon=lon),
             attrs=dict(description="Installed hydro capacity (normalized per country)"),
         )
 
         # Fill the dataset
-        for country_code in country_list:
+        for country_code, country_name in zip(country_code_list, country_name_list):
             Capacities_JRC = np.zeros((len(lat), len(lon)))
             for ii in range(len(lon)):
                 for jj in range(len(lat)):
@@ -585,7 +599,7 @@ def weighted_aggregation(ds_discharge, tech):
                         & (df_jrc["lat"] < lat_edge[jj + 1])
                     ].sum()
             # Normalize capacities such that sum over each country yields one
-            ds_C.normalized_capacity.loc[{"country": country_code}] = (
+            ds_C.normalized_capacity.loc[{"country": country_name}] = (
                 Capacities_JRC[:, :]
                 / df_jrc["installed_capacity_MW"][
                     (df_jrc["type"].isin(type_code))
@@ -597,13 +611,15 @@ def weighted_aggregation(ds_discharge, tech):
 
     # Calculate the discharge per country
     ds_discharge_weighted = []
-    for country in country_list:
+    for country in country_name_list:
         ds = (
             ds_C.normalized_capacity.sel(country=country) * ds_discharge.discharge
         ).sum(("lat", "lon"))
         ds_discharge_weighted.append(ds)
+
     ds_discharge_weighted = xr.concat(ds_discharge_weighted, dim="country")
     ds_discharge_weighted = ds_discharge_weighted.to_dataset(name="discharge")
+
     return ds_discharge_weighted
 
 
@@ -631,8 +647,8 @@ def get_pwlf(calibration_ds, tech):
     :param tech: str
     """
     # get 75th percentile
-    q = calibration_ds.discharge.quantile(0.75,skipna=True).values
-    #print(q)#get_qu_75(calibration_ds).values
+    q = calibration_ds.discharge.quantile(0.75, skipna=True).values
+    # print(q)#get_qu_75(calibration_ds).values
     # calibration parameters
     calib = calibration_ds.dropna(dim="time")
     x = calib.discharge.values
@@ -648,7 +664,7 @@ def get_pwlf(calibration_ds, tech):
     return [a1_opt, b1_opt, a2_opt, b2_opt], q
 
 
-def read_annual_prod(countries, tech):
+def read_power_stats_prod(countries, tech):
     """
     Reads the annual production of hydropower for each country of interest, for the hydropower technology specified
     :param countries: list of country codes
@@ -704,19 +720,44 @@ def scale_up(ds, tech):
     :param ds: DataArray of transformed discharge-to-hydro, per country
     :param tech: string
     """
-    prod_per_country = read_annual_prod(ds.country.values, tech)
-    scaled_output = []
-    for country in ds.country:
-        ann_prod = prod_per_country.sel(country=country)
-        day_by_day = ds.sel(country=country)
-        nb_years = len(
-            day_by_day.groupby("time.year").sum().year
-        )  # number of years in total
-        ann_prod_non_scaled = (
-            day_by_day[f"{tech}_GWh"].sum() / nb_years
-        )  # average yearly values for this dataset
-        scaled = day_by_day * (ann_prod.values / ann_prod_non_scaled.values)
-        scaled_output.append(scaled)
-    scaled_output = xr.concat(scaled_output, dim="country")
-    scaled_output["country"] = list(ds.country.values)
+    annual_reported_production = read_power_stats_prod(ds.country.values, tech)
+    annual_mean_production_here = ds.groupby("time.year").sum("time").mean("year")
+    scaled_output = ds * (annual_reported_production / annual_mean_production_here)
     return scaled_output
+
+
+def country_code_to_country_name(code):
+    country_codes = {
+        "CH": "Switzerland",
+        "IT": "Italy",
+        "FR": "France",
+        "SK": "Slovakia",
+        "DE": "Germany",
+        "ES": "Spain",
+        "AT": "Austria",
+        "SI": "Slovenia",
+        "SE": "Sweden",
+        "UK": "United Kingdom",
+        "FI": "Finland",
+        "EL": "Greece",
+        "RO": "Romania",
+        "AL": "Albania",
+        "BG": "Bulgaria",
+        "HR": "Croatia",
+        "PT": "Portugal",
+        "MK": "Macedonia",
+        "RS": "Serbia",
+        "CZ": "Czech Republic",
+        "ME": "Montenegro",
+        "BA": "Bosnia and Herzegovina",
+        "HU": "Hungary",
+        "IE": "Ireland",
+        "PL": "Poland",
+        "BE": "Belgium",
+        "LV": "Latvia",
+        "LT": "Lithuania",
+        "XK": "Kosovo",
+        "NO": "Norway",
+    }
+
+    return country_codes[code]
