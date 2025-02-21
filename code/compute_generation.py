@@ -23,9 +23,7 @@ class Generation:
         self.realization = realization
         self.scenario = scenario
         self.density_correct = density_correct
-        self.output_path = get_output_path(
-            bc_realization, scenario, realization
-        )
+        self.output_path = get_output_path(bc_realization, scenario, realization)
         self.bc_output_path = f"{self.output_path}atmospheric_variables/"
 
     def conversion_wind(self, year):
@@ -63,9 +61,7 @@ class Generation:
             alpha,
             density_correct=self.density_correct,
         )  # this expects that ds has variable called s_hub with hub height winds
-        print(
-            f"Wind CF with density correction  finished. Took {int((time.time()-ts)/60)} minutes."
-        )
+        print(f"Wind CF finished. Took {int((time.time()-ts)/60)} minutes.")
 
         # Save capacity factor fields
         filename = f"Wind-power_{str(year)}"
@@ -163,9 +159,16 @@ if __name__ == "__main__":
     except:
         density_correct = True
         print("Defaults to with density correction.")
+    # Following needed to interpret density correction boolean correctly
+    if density_correct == "False":
+        density_correct = False
+    elif density_correct == "True":
+        density_correct = True
+
     print(
-        f"Computing generation for scenario {scenario} realization {realization},"
+        f"Computing generation for scenario {scenario}, realization {realization},"
         f" using bias-correction based on historical realization {bc_realization}"
+        f" and with density correction set to {density_correct}."
     )
     generation = Generation(
         bc_realization, scenario, realization, density_correct=density_correct
