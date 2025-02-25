@@ -140,8 +140,12 @@ def create_discharge(scenario, realization):
     # add the last file. example: 2100-01-01 has info about 2099-12-31, so needs to be added
     year = year + 1  # year after last year in time range
     month = "01"
+    if period == "HIST":
+        period_here = "SSP370" # 2015 is already in future, but its so close that SSP choice doesnt matter
+    else:
+        period_here = period
     files_dis.append(
-        f"{path}rof/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.mosart.h0.{year}-{month}.nc"
+        f"/net/meso/climphys/cesm212/b.e212.B{period_here}cmip6.f09_g17.{file_real}/archive/rof/hist/b.e212.B{period_here}cmip6.f09_g17.{file_real}.mosart.h0.{year}-{month}.nc"
     )
     # get monthly discharge
     discharge = xr.open_mfdataset(
@@ -170,7 +174,7 @@ def create_discharge(scenario, realization):
     )
 
 
-def open_discharge(scenario, realization):
+def open_discharge_with_downscaling(scenario, realization):
     """
     Opens and preprocesses discharge data (see function preprocess_cesm_discharge) for a certain year. If end year is passed as an int, it opens all years between year and end_year (included)
     :param scenario, realization: str
@@ -186,6 +190,17 @@ def open_discharge(scenario, realization):
     return ds.convert_calendar(
         "proleptic_gregorian"
     )  # new calendar to get numpy datetime (necessary for weekly resampling)
+
+def open_discharge(input_path):
+    """
+    Opens and preprocesses discharge data (see function preprocess_cesm_discharge).
+    :input_path: str
+    """
+    ds = xr.open_dataset(input_path)
+    return preprocess_hydro_cesm(ds).convert_calendar(
+        "proleptic_gregorian"
+    )  # new calendar to get numpy datetime (necessary for weekly resampling)
+
 
 
 def open_era(cesm_lat, cesm_lon):

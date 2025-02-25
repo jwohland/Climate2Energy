@@ -9,9 +9,10 @@ if __name__ == "__main__":
     scenario = sys.argv[1]
     realization = sys.argv[2]
     bc_realization = sys.argv[3]
-    input_info = sys.argv[4]
+    input_path = sys.argv[4]
+    input_info = sys.argv[5]
     try:
-        output_path = sys.argv[5]
+        output_path = sys.argv[6]
     except:
         output_path = get_output_path(bc_realization, scenario, realization)
     
@@ -27,21 +28,21 @@ if __name__ == "__main__":
 
     # === CESM2 discharge ===
     print("Open CESM2 and ERA5 discharge")
-    # open CESM2 discharge
-    discharge_full = open_discharge(scenario, realization, file = input_info)
     # open CESM2 discharge HIST, for bias correction
-    discharge_full_for_bc = open_discharge("historical", bc_realization, file = "all")
+    discharge_full_for_bc = open_discharge_with_downscaling("historical", bc_realization)
     # opening ERA5 discharge for 1995-2015, for bias correction and for 2016-2023 for run-of-river calibration
-    era5_discharge_full = open_era(discharge_full.lat, discharge_full.lon)
-    print("Bias correct CESM2")
+    era5_discharge_full = open_era(discharge_full_for_bc.lat, discharge_full_for_bc.lon)
     # Bias correction
     try:
         bced_discharge = xr.open_dataset(f"{output_path}atmospheric_variables/bced_discharge_{input_info}.nc") 
     except:
+        # open CESM2 discharge
+        discharge_full = open_discharge(f"{input_path}")
+        print("Bias correct CESM2")
         bced_discharge = (
             bias_correct_xarray(
                 discharge_full.discharge,
-                era5_discharge_full.sel(time=slice("1995", "2014")).discharge.load(),
+                era5_discharge_full.sel(time=slice("1995", "2014")).discharge.load(), 
                 discharge_full_for_bc.discharge,
             )
             .to_dataset(name="discharge")
