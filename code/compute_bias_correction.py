@@ -26,7 +26,7 @@ class Correction:
         :param bc_realization: A, B, C
         :param scenario: historical, SSP245, SSP370
         :param realization: A,B,C
-        :param year: 1995-2015 (historical), 2080-2099 SSPs
+        :param year: 1995-2015 (historical), 2080-2099 SSP370, 2015-2099 SSP245
         :param test_data: True, False
         :return:
         """
@@ -70,16 +70,18 @@ class Correction:
             )
 
             # Save bias-corrected fields
-            ds_corr_wind.to_netcdf(f"{bc_output_path}bced_CESM2_s100_{year}.nc")
+            ds_corr_wind.to_netcdf(f"{bc_output_path}bced_CESM2_s100_{year}.nc",encoding={'time':{'units': f"hours since {year}-01-01 00:00:00" }})
             ds_corr_PV["temperature"].to_dataset().to_netcdf(
-                f"{bc_output_path}bced_CESM2_temperature_{year}.nc"
+                f"{bc_output_path}bced_CESM2_temperature_{year}.nc",
+                encoding={'time':{'units': "hours since 2015-01-01 00:00:00" }}
             )
             ds_corr_PV["global_horizontal"].to_dataset().to_netcdf(
-                f"{bc_output_path}bced_CESM2_global-horizontal_{year}.nc"
+                f"{bc_output_path}bced_CESM2_global-horizontal_{year}.nc",
+                encoding={'time':{'units': "hours since 2015-01-01 00:00:00" }}
             )
             # Save other needed files
-            da_alpha.to_dataset(name="alpha").to_netcdf(f"{bc_output_path}CESM2_alpha_{year}.nc")
-            ds_rho.to_netcdf(f"{bc_output_path}CESM2_rho_{year}.nc")
+            da_alpha.to_dataset(name="alpha").to_netcdf(f"{bc_output_path}CESM2_alpha_{year}.nc",encoding={'time':{'units': "hours since 2015-01-01 00:00:00" }})
+            ds_rho.to_netcdf(f"{bc_output_path}CESM2_rho_{year}.nc",encoding={'time':{'units': "hours since 2015-01-01 00:00:00" }})
 
 
 if __name__ == "__main__":
@@ -87,7 +89,7 @@ if __name__ == "__main__":
     realization = str(sys.argv[2])
     bc_realization = str(sys.argv[3])
     print(
-        f"Computing generation for scenario {scenario} realization {realization},"
+        f"Computing bias correction for scenario {scenario} realization {realization},"
         f" using bias-correction based on historical realization {bc_realization}"
     )
     correction = Correction(bc_realization, scenario, realization)
