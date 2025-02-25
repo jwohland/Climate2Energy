@@ -14,37 +14,42 @@ class Correction:
         self.bc_realization = bc_realization
         self.realization = realization
         self.scenario = scenario
-    def bias_correction(self, year, test_data=False):
+    def bias_correction(self, input_path, input_info, output_path =False, test_data=False):
         """
         Compute bias correction for a given
         - bias correction realization
         - scenario
         - realization
-        - year
+        - input_path (location of input file)
+        - input_info 
 
         If test_data==True, then only the first 10 time steps are computed.
         :param bc_realization: A, B, C
         :param scenario: historical, SSP245, SSP370
         :param realization: A,B,C
-        :param year: 1995-2015 (historical), 2080-2099 SSPs
+        :param output_path: if False, it defaults to output setup as in non-generalied code. Else, it should be a 
+        :param input_info: description of what you're inputting, what you want each output file to be named
         :param test_data: True, False
         :return:
         """
-        output_path = get_output_path(
-            self.bc_realization, self.scenario, self.realization
-        )
-        bc_output_path = f"{output_path}atmospheric_variables/"
+        if output_path == False or type(output_path) != str:
+            output_path = get_output_path(
+                self.bc_realization, self.scenario, self.realization
+            )
+            bc_output_path = f"{output_path}atmospheric_variables/"
+        else:
+            bc_output_path = output_path
         # Check if output exists already
         try:
-            ds_corr_wind = xr.open_dataset(f"{bc_output_path}bced_CESM2_s100_{year}.nc")
+            ds_corr_wind = xr.open_dataset(f"{bc_output_path}bced_s100_{input_info}.nc")
         except FileNotFoundError:
-            print(f"Open files for year {year}")
+            print(f"Open {input_info} files to bias correct (in {input_path})")
             ts = time.time()
             ####################
             # Step 0: Open data
             ####################
-            ds_wind, ds_rho, ds_PV = open_wind_solar(
-                year, self.scenario, self.realization, test_data=test_data
+            ds_wind, ds_rho, ds_PV, ds_other = open_wind_solar(
+                input_path, test_data=test_data
             )  # test_data=True allows for quick test with only 10 timesteps
             print(
                 f"Files opened. Took {int((time.time()-ts)/60)} minutes. Next: bias correction"
@@ -70,27 +75,29 @@ class Correction:
             )
 
             # Save bias-corrected fields
-            ds_corr_wind.to_netcdf(f"{bc_output_path}bced_CESM2_s100_{year}.nc")
+            ds_corr_wind.to_netcdf(f"{bc_output_path}bced_s100_{input_info}.nc")
             ds_corr_PV["temperature"].to_dataset().to_netcdf(
-                f"{bc_output_path}bced_CESM2_temperature_{year}.nc"
+                f"{bc_output_path}bced_temperature_{input_info}.nc"
             )
             ds_corr_PV["global_horizontal"].to_dataset().to_netcdf(
-                f"{bc_output_path}bced_CESM2_global-horizontal_{year}.nc"
+                f"{bc_output_path}bced_global-horizontal_{input_info}.nc"
             )
             # Save other needed files
-            da_alpha.to_dataset(name="alpha").to_netcdf(f"{bc_output_path}CESM2_alpha_{year}.nc")
-            ds_rho.to_netcdf(f"{bc_output_path}CESM2_rho_{year}.nc")
+            da_alpha.to_dataset(name="alpha").to_netcdf(f"{bc_output_path}alpha_{input_info}.nc")
+            ds_rho.to_netcdf(f"{bc_output_path}rho_{input_info}.nc")
+            ds_other.to_netcdf(f"{bc_output_path}other_{input_info}.nc")
 
 
 if __name__ == "__main__":
     scenario = str(sys.argv[1])
     realization = str(sys.argv[2])
     bc_realization = str(sys.argv[3])
+    input_path = str(sys.argv[4])
+    input_info = str(sys.argv[5])
     print(
-        f"Computing generation for scenario {scenario} realization {realization},"
+        f"Computing bias correction for scenario {scenario} realization {realization},"
         f" using bias-correction based on historical realization {bc_realization}"
     )
     correction = Correction(bc_realization, scenario, realization)
     # execute with one process per year
-    with multiprocessing.Pool(20) as pool:
-        pool.map(correction.bias_correction, get_time_range(scenario))
+    correction.bias_correction(input_path, input_info)

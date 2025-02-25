@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 
-def open_xarray_demandninja(year, bc_realization, scenario, realization):
+def open_xarray_demandninja(input_info, bc_realization, scenario, realization):
     """
     Open full datasets with variables needed for demand calculation
 
@@ -19,21 +19,19 @@ def open_xarray_demandninja(year, bc_realization, scenario, realization):
     output_path = get_output_path(bc_realization, scenario, realization)
     try:
         ds_temp = xr.open_dataset(
-            f"{output_path}atmospheric_variables/bced_CESM2_temperature_{year}.nc"
+            f"{output_path}atmospheric_variables/bced_temperature_{input_info}.nc"
         )
         ds_radiation = xr.open_dataset(
-            f"{output_path}atmospheric_variables/bced_CESM2_global-horizontal_{year}.nc"
+            f"{output_path}atmospheric_variables/bced_global-horizontal_{input_info}.nc"
         )
     except FileNotFoundError:
         raise RuntimeError(
-            f"Bias-corrected temperature and radiation input files do not exist {bc_realization} {scenario} {realization}"
+            f"Bias-corrected temperature and radiation input files do not exist {bc_realization} {scenario} {realization} {input_info}"
         )
 
     ds_atm = xr.open_dataset(
-        get_input_filename(scenario, realization, year),
-        chunks={"lat": 30, "lon": 30, "time": 3000},
+        f"{output_path}atmospheric_variables/other_{input_info}.nc"
     )
-    ds_atm = select_Europe(zero_mean_longitudes(ds_atm[["U10", "QREFHT"]]))
     # Correct units so that they match with demandninja
     ds_atm["QREFHT"] *= 1000  # CESM2 gives kg/kg but demandninja wants g/kg
     ds_atm["U10"] *= (2 / 10) ** 0.14  # power law conversion from 10m to 2m
@@ -317,9 +315,9 @@ def scale_heating_demand(target_share, df_current_share, df_demand):
     return df_demand
 
 
-def demand_conversion(bc_realization, scenario, realization):
+def demand_conversion(bc_realization, scenario, realization, input_info):
     """
-    Execute conversion from CESM2 output to heating and cooling demand over all historical years (1990 - 2010).
+    Execute conversion from CESM2 output to heating and cooling demand for a given input_info file setup.
 
     This outputs two version of heating demand.
 
@@ -337,48 +335,49 @@ def demand_conversion(bc_realization, scenario, realization):
     pop_density = compute_country_population_density()
     var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
     output_path = get_output_path(bc_realization, scenario, realization)
-    for year in get_time_range(scenario):
-        ds_ninja = open_xarray_demandninja(year, bc_realization, scenario, realization)
-        ds_ninja.load()  # loading here once speeds up the following loop
-        result_list = []  # to store country level results
-        for country in demand_params.index:
-            print(country)
-            params = demand_params.loc[
-                country
-            ]  # country specific heating and cooling parameters
-            tmp_pop = pop_density.sel(country=country)
-            # computed weighted demand per country
-            demand_list = []
-            for ilat in range(ds_ninja.lat.size):
-                for ilon in range(ds_ninja.lon.size):
-                    local_population = tmp_pop.isel(lat=ilat, lon=ilon)[var_name].values
-                    if np.isfinite(local_population):
-                        df = pick_convert_demandninja(ds_ninja, ilat, ilon)
-                        demand_list.append(
-                            demand_ninja.demand(df.copy(), **params) * local_population
-                        )
-            df_demand = pd.concat(demand_list)  # combine all locations
-            result = df_demand.groupby(df_demand.index).sum()  # country sum
-            result["country"] = country
-            result_list.append(result)
-        results = reformat_demandninja(pd.concat(result_list))
 
-        # Save raw
-        for demand_type in ["heating_demand", "cooling_demand"]:
-            file_suffix = demand_type.replace("_", "-") + "_" + str(year)
-            results.loc[demand_type].to_csv(f"{output_path}output_variables/{file_suffix}.csv")
-            if demand_type == "heating_demand":
-                # Save scaled heating
-                file_suffix += "_fully-electrified"
-                # scale to target share
-                df_heating_scaled = scale_heating_demand(
-                    1, compute_share_df(), results.loc[demand_type].copy()
-                )
-                df_heating_scaled.to_csv(f"{output_path}output_variables/{file_suffix}.csv")
+    ds_ninja = open_xarray_demandninja(input_info, bc_realization, scenario, realization)
+    ds_ninja.load()  # loading here once speeds up the following loop
+    result_list = []  # to store country level results
+    for country in demand_params.index:
+        print(country)
+        params = demand_params.loc[
+            country
+        ]  # country specific heating and cooling parameters
+        tmp_pop = pop_density.sel(country=country)
+        # computed weighted demand per country
+        demand_list = []
+        for ilat in range(ds_ninja.lat.size):
+            for ilon in range(ds_ninja.lon.size):
+                local_population = tmp_pop.isel(lat=ilat, lon=ilon)[var_name].values
+                if np.isfinite(local_population):
+                    df = pick_convert_demandninja(ds_ninja, ilat, ilon)
+                    demand_list.append(
+                        demand_ninja.demand(df.copy(), **params) * local_population
+                    )
+        df_demand = pd.concat(demand_list)  # combine all locations
+        result = df_demand.groupby(df_demand.index).sum()  # country sum
+        result["country"] = country
+        result_list.append(result)
+    results = reformat_demandninja(pd.concat(result_list))
+
+    # Save raw
+    for demand_type in ["heating_demand", "cooling_demand"]:
+        file_suffix = demand_type.replace("_", "-") + "_" + str(input_info)
+        results.loc[demand_type].to_csv(f"{output_path}output_variables/{file_suffix}.csv")
+        if demand_type == "heating_demand":
+            # Save scaled heating
+            file_suffix += "_fully-electrified"
+            # scale to target share
+            df_heating_scaled = scale_heating_demand(
+                1, compute_share_df(), results.loc[demand_type].copy()
+            )
+            df_heating_scaled.to_csv(f"{output_path}output_variables/{file_suffix}.csv")
 
 
 if __name__ == "__main__":
     scenario = str(sys.argv[1])
     realization = str(sys.argv[2])
     bc_realization = str(sys.argv[3])
-    demand_conversion(bc_realization, scenario, realization)
+    input_info = str(sys.argv[4])
+    demand_conversion(bc_realization, scenario, realization, input_info)

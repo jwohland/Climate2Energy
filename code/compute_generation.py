@@ -18,27 +18,32 @@ class Generation:
         scenario,
         realization,
         density_correct=True,
+        output_path=False
     ):
         self.bc_realization = bc_realization
         self.realization = realization
         self.scenario = scenario
         self.density_correct = density_correct
-        self.output_path = get_output_path(bc_realization, scenario, realization)
+        # add your own output path if needed
+        if output_path == False or type(output_path) != str:
+            self.output_path = get_output_path(bc_realization, scenario, realization)
+        else:
+            self.output_path = output_path
         self.bc_output_path = f"{self.output_path}atmospheric_variables/"
 
-    def conversion_wind(self, year):
+    def conversion_wind(self, input_info):
         """
         Compute wind generation for a given
         - bias correction realization
         - scenario
         - realization
-        - year
+        - input_info
 
         If test_data==True, then only the first 10 time steps are computed.
         :param bc_realization: A, B, C
         :param scenario: historical, SSP245, SSP370
         :param realization: A,B,C
-        :param year: 1995-2015 (historical), 2080-2099 SSPs
+        :param input_info: description of what you're inputting, what you want each output file to be named
         :param test_data: True, False
         :return:
         """
@@ -46,10 +51,10 @@ class Generation:
         # Step 1: Open bias corrected data
         ####################
         ds_corr_wind = xr.open_dataset(
-            f"{self.bc_output_path}bced_CESM2_s100_{year}.nc"
+            f"{self.bc_output_path}bced_s100_{input_info}.nc"
         )
-        ds_rho = xr.open_dataset(f"{self.bc_output_path}CESM2_rho_{year}.nc")
-        alpha = xr.open_dataset(f"{self.bc_output_path}CESM2_alpha_{year}.nc")
+        ds_rho = xr.open_dataset(f"{self.bc_output_path}rho_{input_info}.nc")
+        alpha = xr.open_dataset(f"{self.bc_output_path}alpha_{input_info}.nc")
 
         ####################
         # Step 2: Calculate capacity factors
@@ -64,7 +69,7 @@ class Generation:
         print(f"Wind CF finished. Took {int((time.time()-ts)/60)} minutes.")
 
         # Save capacity factor fields
-        filename = f"Wind-power_{str(year)}"
+        filename = f"Wind-power_{input_info}"
         if self.density_correct:
             filename += "_density-corrected.nc"
         ds_CF_wind.to_netcdf(f"{self.output_path}output_variables/{filename}")
@@ -88,7 +93,7 @@ class Generation:
             for i in range(3):
                 ds_tmp = ds_tmp_full.isel(turbine=i)
                 turbine_name = str(ds_tmp.turbine.values)
-                filename = f"Wind-power_{year}_{turbine_name}_onshore_{onshore}"
+                filename = f"Wind-power_{input_info}_{turbine_name}_onshore_{onshore}"
                 if self.density_correct:
                     filename += "_density_corrected"
                 store_as_pandas_dataframe(
@@ -98,33 +103,33 @@ class Generation:
                 )
         print("Everything finished and saved")
 
-    def conversion_PV(self, year):
+    def conversion_PV(self, input_info):
         """
         Compute solar PV generation for a given
         - bias correction realization
         - scenario
         - realization
-        - year
+        - input_info
 
         If test_data==True, then only the first 10 time steps are computed.
         :param bc_realization: A, B, C
         :param scenario: historical, SSP245, SSP370
         :param realization: A,B,C
-        :param year: 1995-2015 (historical), 2080-2099 SSPs
+        :param input_info: description of what you're inputting, what you want each output file to be named
         :param test_data: True, False
         :return:
         """
-        print(f"Open files for year {year}")
+        print(f"Open files for {input_info}")
         ####################
         # Step 1: Open bias corrected data
         ####################
         ds_corr_PV = xr.merge(
             [
                 xr.open_dataset(
-                    f"{self.bc_output_path}bced_CESM2_temperature_{year}.nc"
+                    f"{self.bc_output_path}bced_temperature_{input_info}.nc"
                 ),
                 xr.open_dataset(
-                    f"{self.bc_output_path}bced_CESM2_global-horizontal_{year}.nc"
+                    f"{self.bc_output_path}bced_global-horizontal_{input_info}.nc"
                 ),
             ]
         )
@@ -135,7 +140,7 @@ class Generation:
         ds_CF_PV = calculate_PV(ds_corr_PV, params=None, num_cores=32)
 
         # Save capacity factor fields
-        ds_CF_PV.to_netcdf(f"{self.output_path}output_variables/PV_{year}.nc")
+        ds_CF_PV.to_netcdf(f"{self.output_path}output_variables/PV_{input_info}.nc")
         print("Capacity factors computed. Next: country subsets and saving data")
 
         # Step 3: subset countries
@@ -144,7 +149,7 @@ class Generation:
 
         # Step4: Save capacity factor csv files
         store_as_pandas_dataframe(
-            ds_CF_PV_countries["pv"], name=f"PV_{year}", path=self.output_path
+            ds_CF_PV_countries["pv"], name=f"PV_{input_info}", path=self.output_path
         )
         print("Everything finished and saved")
 
@@ -154,16 +159,12 @@ if __name__ == "__main__":
     realization = str(sys.argv[2])
     bc_realization = str(sys.argv[3])
     technology = str(sys.argv[4])
+    input_info = str(sys.argv[5])
     try:
-        density_correct = str(sys.argv[5])
+        density_correct = eval(sys.argv[6])
     except:
         density_correct = True
         print("Defaults to with density correction.")
-    # Following needed to interpret density correction boolean correctly
-    if density_correct == "False":
-        density_correct = False
-    elif density_correct == "True":
-        density_correct = True
 
     print(
         f"Computing generation for scenario {scenario}, realization {realization},"
@@ -172,13 +173,10 @@ if __name__ == "__main__":
     )
     generation = Generation(
         bc_realization, scenario, realization, density_correct=density_correct
-    )
+    ) # add you own output path here if needed
     if technology == "Wind":
-        # execute with one process per year
-        with multiprocessing.Pool(20) as pool:
-            pool.map(generation.conversion_wind, get_time_range(scenario))
+        generation.conversion_wind(input_info)
     elif technology == "PV":
-        for year in get_time_range(scenario):
-            generation.conversion_PV(year)
+        generation.conversion_PV(input_info)
     else:
         print("Technology not valid")

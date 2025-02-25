@@ -94,7 +94,7 @@ def get_hub_heights(turbine_name):
     return hub_height_dict[turbine_name]
 
 
-def open_wind_solar(year, scenario, realization, test_data=False):
+def open_wind_solar(input_file, test_data=False):
     """
     Open the data needed for wind and solar energy calculation and output
     as xr.Datasets.
@@ -114,7 +114,7 @@ def open_wind_solar(year, scenario, realization, test_data=False):
     ds_atm = select_Europe(
         zero_mean_longitudes(
             xr.open_dataset(
-                get_input_filename(scenario, realization, year), chunks=chunks
+                input_file, chunks=chunks
             )
         )
     )
@@ -146,8 +146,9 @@ def open_wind_solar(year, scenario, realization, test_data=False):
         ds_PV["time"] = ds_PV.indexes[
             "time"
         ].to_datetimeindex()  # time index that GSEE understands
-
-    return ds_wind.load(), ds_rho.load(), ds_PV.load()
+    # open secondary variables
+    ds_other = ds_atm[["U10", "QREFHT"]]
+    return ds_wind.load(), ds_rho.load(), ds_PV.load(), ds_other.load()
 
 
 def zero_mean_longitudes(ds):

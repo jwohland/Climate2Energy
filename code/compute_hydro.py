@@ -9,7 +9,12 @@ if __name__ == "__main__":
     scenario = sys.argv[1]
     realization = sys.argv[2]
     bc_realization = sys.argv[3]
-
+    input_info = sys.argv[4]
+    try:
+        output_path = sys.argv[5]
+    except:
+        output_path = get_output_path(bc_realization, scenario, realization)
+    
     technologies = ["ror", "inflow"]
     rolling = {
         "ror": 21,
@@ -23,31 +28,34 @@ if __name__ == "__main__":
     # === CESM2 discharge ===
     print("Open CESM2 and ERA5 discharge")
     # open CESM2 discharge
-    discharge_full = open_discharge(scenario, realization)
+    discharge_full = open_discharge(scenario, realization, file = input_info)
     # open CESM2 discharge HIST, for bias correction
-    discharge_full_for_bc = open_discharge("historical", bc_realization)
+    discharge_full_for_bc = open_discharge("historical", bc_realization, file = "all")
     # opening ERA5 discharge for 1995-2015, for bias correction and for 2016-2023 for run-of-river calibration
     era5_discharge_full = open_era(discharge_full.lat, discharge_full.lon)
     print("Bias correct CESM2")
     # Bias correction
-    discharge_full = (
-        bias_correct_xarray(
-            discharge_full.discharge,
-            era5_discharge_full.sel(time=slice("1995", "2014")).discharge.load(),
-            discharge_full_for_bc.discharge,
+    try:
+        bced_discharge = xr.open_dataset(f"{output_path}atmospheric_variables/bced_discharge_{input_info}.nc") 
+    except:
+        bced_discharge = (
+            bias_correct_xarray(
+                discharge_full.discharge,
+                era5_discharge_full.sel(time=slice("1995", "2014")).discharge.load(),
+                discharge_full_for_bc.discharge,
+            )
+            .to_dataset(name="discharge")
+            .convert_calendar("proleptic_gregorian")
+        )  # to get numpy datetime (necessary for weekly resampling)
+        # save bias corrected discharge, year for year
+        bced_discharge.sel(time=str(year)).to_netcdf(
+            f"{output_path}atmospheric_variables/bced_discharge_{input_info}.nc"
         )
-        .to_dataset(name="discharge")
-        .convert_calendar("proleptic_gregorian")
-    )  # to get numpy datetime (necessary for weekly resampling)
-    # save bias corrected discharge, year for year
-    for year in get_time_range(scenario):
-        discharge_full.sel(time=str(year)).to_netcdf(
-            f"{get_output_path(bc_realization, scenario, realization)}atmospheric_variables/bced_CESM2_discharge_{year}.nc"
-        )
+    
     # aggregation
     for tech in technologies:
         print(f"Aggregate CESM2 and ERA5 for tech {tech}")
-        discharge = weighted_aggregation(discharge_full, tech).discharge
+        discharge = weighted_aggregation(bced_discharge, tech).discharge
         if tech == "inflow":
             discharge = resample_weekly(discharge)  # get cesm2 in weekly resolution
 
@@ -105,9 +113,8 @@ if __name__ == "__main__":
         # ===========================
         # === Step 3: Save output ===
         # ===========================
-        for year in get_time_range(scenario):
-            store_as_pandas_dataframe(
-                transferred[f"{tech}_GWh"],
-                f"hydro_{tech}_{year}",
-                get_output_path(bc_realization, scenario, realization),
-            )
+        store_as_pandas_dataframe(
+            transferred[f"{tech}_GWh"],
+            f"hydro_{tech}_{input_info}",
+            output_path,
+        )
