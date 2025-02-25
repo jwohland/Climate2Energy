@@ -720,7 +720,8 @@ def scale_up(ds, tech):
     :param ds: DataArray of transformed discharge-to-hydro, per country
     :param tech: string
     """
-    annual_reported_production = read_power_stats_prod(ds.country.values, tech)
+    annual_reported_production = read_power_stats_prod(country_name_to_country_code(list(ds.country.values)), tech)
+    annual_reported_production["country"] =list(ds.country.values)
     annual_mean_production_here = ds.groupby("time.year").sum("time").mean("year")
     scaled_output = ds * (annual_reported_production / annual_mean_production_here)
     return scaled_output
@@ -761,3 +762,41 @@ def country_code_to_country_name(code):
     }
 
     return country_codes[code]
+
+def country_name_to_country_code(keys):
+    country_codes = {
+        "Switzerland":"CH",
+        "Italy":"IT",
+        "France":"FR",
+        "Slovakia":"SK",
+        "Germany":"DE",
+        "Spain":"ES",
+        "Austria":"AT",
+        "Slovenia":"SI",
+        "Sweden":"SE",
+        "United Kingdom":"UK",
+        "Finland":"FI",
+        "Greece":"EL",
+        "Romania":"RO",
+        "Albania":"AL",
+        "Bulgaria":"BG",
+        "Croatia":"HR",
+        "Portugal":"PT",
+        "Macedonia":"MK",
+        "Serbia":"RS",
+        "Czech Republic":"CZ",
+        "Montenegro":"ME",
+        "Bosnia and Herzegovina":"BA",
+        "Hungary":"HU",
+        "Ireland":"IE",
+        "Poland":"PL",
+        "Belgium":"BE",
+        "Latvia":"LV",
+        "Lithuania": "LT",
+        "Kosovo": "XK",
+        "Norway":"NO",
+    }
+    if type(keys) == list:
+        return list( map(country_codes.get, keys) )
+    else:
+        return country_codes[keys]
