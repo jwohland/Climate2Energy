@@ -48,8 +48,8 @@ if __name__ == "__main__":
             .to_dataset(name="discharge")
             .convert_calendar("proleptic_gregorian")
         )  # to get numpy datetime (necessary for weekly resampling)
-        # save bias corrected discharge, year for year
-        bced_discharge.sel(time=str(year)).to_netcdf(
+        # save bias corrected discharge
+        bced_discharge.to_netcdf(
             f"{output_path}atmospheric_variables/bced_discharge_{input_info}.nc"
         )
     
