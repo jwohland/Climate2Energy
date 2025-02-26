@@ -26,7 +26,7 @@ class Correction:
         :param bc_realization: A, B, C
         :param scenario: historical, SSP245, SSP370
         :param realization: A,B,C
-        :param year: 1995-2015 (historical), 2080-2099 SSP370, 2015-2099 SSP245
+        :param year: 1995-2015 (historical), 2080-2099 (SSP370), 2015-2099 (SSP245)
         :param test_data: True, False
         :return:
         """
