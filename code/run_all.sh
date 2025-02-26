@@ -5,7 +5,7 @@ do
     conda activate CESM2energy
     python compute_bias_correction_prep.py ${bc_realization}  # Input files for bias correction
     conda deactivate
-    for scenario in historical SSP370
+    for scenario in historical SSP245 SSP370
     do
       for realization in A B C
       do
