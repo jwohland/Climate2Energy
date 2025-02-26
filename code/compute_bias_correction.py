@@ -69,19 +69,20 @@ class Correction:
                 f"Bias correction finished. Took {int((time.time()-ts)/60)} minutes."
             )
 
+            time_unit_dict = {'time':{'units': f"hours since {year}-01-01 00:00:00" }}
             # Save bias-corrected fields
-            ds_corr_wind.to_netcdf(f"{bc_output_path}bced_CESM2_s100_{year}.nc",encoding={'time':{'units': f"hours since {year}-01-01 00:00:00" }})
+            ds_corr_wind.to_netcdf(f"{bc_output_path}bced_CESM2_s100_{year}.nc",encoding=time_unit_dict)
             ds_corr_PV["temperature"].to_dataset().to_netcdf(
                 f"{bc_output_path}bced_CESM2_temperature_{year}.nc",
-                encoding={'time':{'units': "hours since 2015-01-01 00:00:00" }}
+                encoding=time_unit_dict
             )
             ds_corr_PV["global_horizontal"].to_dataset().to_netcdf(
                 f"{bc_output_path}bced_CESM2_global-horizontal_{year}.nc",
-                encoding={'time':{'units': "hours since 2015-01-01 00:00:00" }}
+                encoding=time_unit_dict
             )
             # Save other needed files
-            da_alpha.to_dataset(name="alpha").to_netcdf(f"{bc_output_path}CESM2_alpha_{year}.nc",encoding={'time':{'units': "hours since 2015-01-01 00:00:00" }})
-            ds_rho.to_netcdf(f"{bc_output_path}CESM2_rho_{year}.nc",encoding={'time':{'units': "hours since 2015-01-01 00:00:00" }})
+            da_alpha.to_dataset(name="alpha").to_netcdf(f"{bc_output_path}CESM2_alpha_{year}.nc",encoding=time_unit_dict)
+            ds_rho.to_netcdf(f"{bc_output_path}CESM2_rho_{year}.nc",encoding=time_unit_dict)
 
 
 if __name__ == "__main__":
