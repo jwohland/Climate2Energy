@@ -21,7 +21,19 @@ from utils import (
 # =================================
 # === PREPROCESSING AND OPENING ===
 # =================================
-
+def shift_by_one_month(date):
+    # Get current year and month
+    year, month = date.year, date.month
+    
+    # Increment month and handle year rollover
+    if month == 1:
+        year -= 1
+        month = 12
+    else:
+        month -= 1
+    
+    # Return new date while preserving the day
+    return type(date)(year, month, min(date.day, 28))  # Adjust day for safety
 
 def downscale(ds_discharge, ds_runoff, file_name):
     """
@@ -60,15 +72,15 @@ def downscale(ds_discharge, ds_runoff, file_name):
         ]
 
     ds_runoff_mean["time"] = normalize_to_midnight(ds_runoff_mean.time.values)
+    # shift one month back
+    ds_discharge["time"] = [shift_by_one_month(f) for f in ds_discharge["time"].values]
     ## Expand monthly discharge to daily discharge
     ds_discharge_daily = (
         ds_discharge.resample(time="1D")
         .bfill()
         .rename({"discharge": "discharge_expanded"})
     )
-    # ds_discharge_daily["time"] = ds_discharge_daily.time + dt.timedelta(
-    #     days=-31
-    # )  # shift one month back
+    
     ## Match time coordinates of the two datasets: discharge_daily and runoff_mean
     ds_runoff_mean = ds_runoff_mean.sel(time=ds_discharge_daily.time)
     ## Expand runoff_mean, to include latitude and longitude
