@@ -33,7 +33,7 @@ def shift_by_one_month(date):
         month -= 1
     
     # Return new date while preserving the day
-    return type(date)(year, month, min(date.day, 28))  # Adjust day for safety
+    return type(date)(year, month, date.day) 
 
 def downscale(ds_discharge, ds_runoff, file_name):
     """
