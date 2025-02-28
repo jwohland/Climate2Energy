@@ -196,7 +196,10 @@ def open_discharge(input_path):
     Opens and preprocesses discharge data (see function preprocess_cesm_discharge).
     :input_path: str
     """
-    ds = xr.open_dataset(input_path)
+    file = glob.glob(input_path)
+    if file == []:
+        print("ERROR: no such file")
+    ds = xr.open_dataset(file[0])
     return preprocess_hydro_cesm(ds).convert_calendar(
         "proleptic_gregorian"
     )  # new calendar to get numpy datetime (necessary for weekly resampling)
