@@ -16,7 +16,6 @@ def open_data_as_dictionary():
         ds_dict[scenario] = {}
         if scenario == "historical":
             time_range = range(1995, 2015)
-
         else:
             time_range = range(2080, 2100)
         for density_correct in [True, False]:
@@ -178,3 +177,138 @@ axs[i].set_title("True - False")
 add_letters(axs, x=-0.04)
 plt.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.15)
 plt.savefig("../plots/paper/density/Diff_CF_maps_CC_effect.jpeg", dpi=300)
+
+
+##########################
+# Prep for seasonal and daily cycle in France SWT 120_3600
+##########################
+
+# Build up dictionary with relevant data
+df_dict = {}
+# Historical
+df_dict["historical"] = {}
+data_path = get_data_path("historical")
+df_dict["historical"]["uncorrected"] = [
+    pd.read_csv(
+        data_path + f"Wind-power_{year}_SWT120_3600_onshore_True.csv", index_col=0
+    ).loc["France"]
+    for year in range(1995, 2015)
+]
+df_dict["historical"]["corrected"] = [
+    pd.read_csv(
+        data_path + f"Wind-power_{year}_SWT120_3600_onshore_True_density_corrected.csv",
+        index_col=0,
+    ).loc["France"]
+    for year in range(1995, 2015)
+]
+
+# Future
+df_dict["SSP370"] = {}
+data_path = get_data_path("SSP370")
+df_dict["SSP370"]["uncorrected"] = [
+    pd.read_csv(
+        data_path + f"Wind-power_{year}_SWT120_3600_onshore_True.csv", index_col=0
+    ).loc["France"]
+    for year in range(2080, 2100)
+]
+df_dict["SSP370"]["corrected"] = [
+    pd.read_csv(
+        data_path + f"Wind-power_{year}_SWT120_3600_onshore_True_density_corrected.csv",
+        index_col=0,
+    ).loc["France"]
+    for year in range(2080, 2100)
+]
+
+for scenario in ["historical", "SSP370"]:
+    for correction in ["corrected", "uncorrected"]:
+        df = df_dict[scenario][correction]
+        df = pd.concat(df)
+        df.index = pd.to_datetime(df.index)
+        df_dict[scenario][correction] = df
+
+
+##########################
+# Fourth plot Seasonal cycle
+##########################
+f, axs = plt.subplots(ncols=2, nrows=2, figsize=(12, 8))
+rolling_window = 14  # days
+
+for j, scenario in enumerate(["historical", "SSP370"]):
+    df_corrected = df_dict[scenario]["corrected"]
+    df_uncorrected = df_dict[scenario]["uncorrected"]
+
+    # Absolute CFs
+    df_uncorrected.groupby(df_uncorrected.index.day_of_year).mean().rolling(
+        rolling_window
+    ).mean().plot(ax=axs[j, 0], label="uncorrected", color="Darkblue")
+    df_corrected.groupby(df_corrected.index.day_of_year).mean().rolling(
+        rolling_window
+    ).mean().plot(ax=axs[j, 0], label="corrected", color="Orange")
+    axs[j, 0].legend(loc="lower left")
+
+    # Percentage change
+    ((df_corrected - df_uncorrected) / df_uncorrected * 100).groupby(
+        df_uncorrected.index.day_of_year
+    ).mean().rolling(rolling_window).mean().plot(
+        ax=axs[j, 1], label="difference", color="black"
+    )
+    axs[j, 1].axhline(0, ls="--", color="grey")
+
+    add_letters(axs, x=-0.04)
+    axs[j, 0].set_ylabel("CF")
+    axs[j, 1].set_ylabel("Change in CF [%]")
+
+    for i in range(2):
+        axs[i, j].set_xticks(np.linspace(15, 380, 7)[:-1])
+        axs[i, j].set_xticklabels(
+            ["Jan", "Mar", "May", "July", "Sep", "Nov"], fontsize=10
+        )
+    [axs[j, i].set_title(scenario) for i in range(2)]
+
+# Align y axis ranges per column
+for j in range(2):
+    axs[j, 0].set_ylim(ymin=0.15, ymax=0.57)
+    axs[j, 1].set_ylim(ymin=-4.3, ymax=1.3)
+plt.tight_layout()
+plt.savefig("../plots/paper/density/Seasonal_France_SWT120_3600.jpeg", dpi=300)
+
+##########################
+# Fifth plot Daily cycle
+##########################
+f, axs = plt.subplots(ncols=2, nrows=2, figsize=(12, 8))
+
+for j, scenario in enumerate(["historical", "SSP370"]):
+    df_corrected = df_dict[scenario]["corrected"]
+    df_uncorrected = df_dict[scenario]["uncorrected"]
+    # Pick July only
+    df_uncorrected_july = df_uncorrected.loc[df_uncorrected.index.month == 7]
+    df_corrected_july = df_corrected.loc[df_corrected.index.month == 7]
+
+    # Absolute CFs
+    df_uncorrected_july.groupby(df_uncorrected_july.index.hour).mean().plot(
+        ax=axs[j, 0], label="uncorrected", color="Darkblue"
+    )
+    df_corrected_july.groupby(df_corrected_july.index.hour).mean().plot(
+        ax=axs[j, 0], label="corrected", color="Orange"
+    )
+    axs[j, 0].legend()
+
+    # Percentage change
+    ((df_corrected_july - df_uncorrected_july) / df_uncorrected_july * 100).groupby(
+        df_uncorrected_july.index.hour
+    ).mean().plot(ax=axs[j, 1], label="difference", color="black")
+    axs[j, 1].axhline(0, ls="--", color="grey")
+
+    add_letters(axs, x=-0.04)
+    axs[j, 0].set_ylabel("CF")
+    axs[j, 1].set_ylabel("Change in CF [%]")
+    axs[1, j].set_xlabel("Hour of the day")
+
+    [axs[j, i].set_title(scenario) for i in range(2)]
+
+# Align y axis ranges per column
+for j in range(2):
+    axs[j, 0].set_ylim(ymin=0.13, ymax=0.245)
+    axs[j, 1].set_ylim(ymin=-5, ymax=0.2)
+plt.tight_layout()
+plt.savefig("../plots/paper/density/Daily_France_SWT120_3600.jpeg", dpi=300)
