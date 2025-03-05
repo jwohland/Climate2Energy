@@ -107,7 +107,7 @@ if __name__ == "__main__":
         # ===========================
         for year in get_time_range(scenario):
             store_as_pandas_dataframe(
-                transferred[f"{tech}_GWh"].sel(str(year)),
+                transferred[f"{tech}_GWh"].sel(time=str(year)),
                 f"hydro_{tech}_{year}",
                 get_output_path(bc_realization, scenario, realization),
             )
