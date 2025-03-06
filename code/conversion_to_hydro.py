@@ -140,6 +140,10 @@ def create_discharge(scenario, realization):
     path = (
         f"/net/meso/climphys/cesm212/b.e212.B{period}cmip6.f09_g17.{file_real}/archive/"
     )
+    if scenario == "SSP245":
+        nb = "00000"
+    else:
+        nb = "03600"
     files_dis, files_run = [], []
     for year in time_range:
         for month in [f"{m:02d}" for m in range(1, 13)]:
@@ -147,7 +151,7 @@ def create_discharge(scenario, realization):
                 f"{path}rof/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.mosart.h0.{year}-{month}.nc"
             )
         files_run.append(
-            f"{path}lnd/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.clm2.h6.{year}-01-01-03600.nc"
+            f"{path}lnd/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.clm2.h6.{year}-01-01-{nb}.nc"
         )
     # add the last file. example: 2100-01-01 has info about 2099-12-31, so needs to be added
     year = year + 1  # year after last year in time range
