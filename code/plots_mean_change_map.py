@@ -110,7 +110,7 @@ def spider_on_ax(df, ax, add_labels=False):
     ax.set_ylim(ymin=0, ymax=200)
     lw_ticks = 4
     if add_labels:
-        fs=10
+        fs = 10
         ax.set_yticks([50, 150], minor=True, alpha=0.8, lw=lw_ticks)
         ax.set_yticks([100], "")
         ax.grid(axis="x", alpha=0, color="Olive")
@@ -217,10 +217,14 @@ def plot_roses():
                 error_plus_list.append((df_tmp.max(axis=0) - df_tmp.mean(axis=0)))
             else:
                 # To plot all changes in same rose, generation is scaled by factor of 10
-                scaling_factor=10
+                scaling_factor = 10
                 change_list.append(df_tmp.mean(axis=0) * scaling_factor + 100)
-                error_minus_list.append((df_tmp.mean(axis=0) - df_tmp.min(axis=0)) * scaling_factor)
-                error_plus_list.append((df_tmp.max(axis=0) - df_tmp.mean(axis=0)) * scaling_factor)
+                error_minus_list.append(
+                    (df_tmp.mean(axis=0) - df_tmp.min(axis=0)) * scaling_factor
+                )
+                error_plus_list.append(
+                    (df_tmp.max(axis=0) - df_tmp.mean(axis=0)) * scaling_factor
+                )
         df_country = pd.DataFrame(
             index=df_delta_CF.index.levels[0],
             data={
