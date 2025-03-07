@@ -38,7 +38,7 @@ center_dict = {
     "Sweden": (11.76, 56.32 + 2, 9),
     "Slovenia": (14.34 - 1, 45.5 - 0.5, 1.31),
     "Slovakia": (18.86 - 1, 47.83 - 0.3, 1.68),
-    "United Kingdom": (-8.1+0.5, 50.71, 9.33),
+    "United Kingdom": (-8.1 + 0.5, 50.71, 9.33),
 }
 
 iso_dict = {
@@ -370,7 +370,48 @@ def plot_map_roses(gridlines=True):
     f.savefig("../plots/paper/roses/rose_map.jpeg", dpi=300)
 
 
+def realization_barplot(df_delta_CF, country, tech):
+    """
+    Barplots for selected country - tech combinations showing the
+    change per realization as well as the uncertainty range.
+    :param df_delta_CF:
+    :param country:
+    :param tech:
+    :return:
+    """
+    df_tmp = df_delta_CF.query(f"Metric=='mean' & Technology=='{tech}'")[country]
+    color = df_colors[tech]
+    plt.bar(
+        [x + y for x in ["A", "B", "C"] for y in ["A", "B", "C"]],
+        df_tmp.values,
+        color=color,
+    )
+
+    ymax = np.abs(df_tmp.values).max()
+    plt.ylim(-ymax * 1.01, ymax * 1.01)
+    plt.ylabel("Mean change [%]")
+    plt.axhline(0, ls="--", color="grey")
+    plt.title(tech + " in " + country)
+    plt.xlabel("Realization")
+    plt.gca().spines["right"].set_color("none")
+    plt.gca().spines["top"].set_color("none")
+    plt.bar(
+        8.8,
+        bottom=df_tmp.values.min(),
+        height=df_tmp.values.max() - df_tmp.values.min(),
+        color="grey",
+        width=0.4,
+        alpha=0.7,
+    )
+
+    plt.savefig(f"../plots/paper/roses/bar_{tech}_{country}.jpeg", dpi=300)
+
+
 if __name__ == "__main__":
     plot_dummy_rose()
     plot_roses()
     plot_map_roses(gridlines=False)
+    realization_barplot(df_delta_CF, "Spain", "Hydropower (dam)")
+    realization_barplot(df_delta_CF, "France", "cooling")
+    realization_barplot(df_delta_CF, "Finland", "PV")
+    realization_barplot(df_delta_CF, "Switzerland", "Hydropower (ror)")
