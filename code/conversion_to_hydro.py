@@ -35,7 +35,7 @@ def shift_by_one_month(date):
     # Return new date while preserving the day
     return type(date)(year, month, date.day) 
 
-def downscale(ds_discharge, ds_runoff, file_name):
+def downscale(ds_discharge, ds_runoff, time_range, file_name):
     """
     Takes monthly mean river discharge and interpolates to daily data assuming
     that the sub-monthly evolution of river discharge and runoff are identical.
@@ -79,7 +79,7 @@ def downscale(ds_discharge, ds_runoff, file_name):
         ds_discharge.resample(time="1D")
         .bfill()
         .rename({"discharge": "discharge_expanded"})
-    )
+    ).sel(time=slice(str(time_range[0]),str(time_range[-1]))) # make sure only the exact time range is chosen
     
     ## Match time coordinates of the two datasets: discharge_daily and runoff_mean
     ds_runoff_mean = ds_runoff_mean.sel(time=ds_discharge_daily.time)
@@ -186,6 +186,7 @@ def create_discharge(scenario, realization):
     downscale(
         discharge,
         runoff,
+        time_range,
         f"{output}/atmospheric_variables/CESM2_discharge.nc",
     )
 
