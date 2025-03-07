@@ -59,15 +59,15 @@ def get_tech_timeseries_dictionary(tech_filter_dict):
                         get_output_path(bc_realization, scenario, realization)
                         + "output_variables/"
                     )
+                    filenames = glob.glob(csv_path + tech_filter_dict[tech] + ".csv")
+                    filenames = [name for name in filenames if "boost" not in name]  # remove boosted simulations of they exist
                     df = pd.concat(
-                        [
-                            pd.read_csv(filename, index_col=0)
-                            for filename in sorted(
-                                glob.glob(csv_path + tech_filter_dict[tech] + ".csv")
-                            )
-                        ],
-                        axis=1,
-                    )
+                            [
+                                pd.read_csv(filename, index_col=0)
+                                for filename in sorted(filenames)
+                            ],
+                            axis=1,
+                        )
                     df_dict[scenario][tech][bc_realization][realization] = df
     return df_dict
 
@@ -131,14 +131,12 @@ def compute_metrics_all_sims(metrics=["mean", "q05", "q95"]):
                             get_output_path(bc_realization, scenario, realization)
                             + "output_variables/"
                         )
+                        filenames = glob.glob(csv_path + tech_filter_dict[tech] + ".csv")
+                        filenames = [name for name in filenames if "boost" not in name]  # remove boosted simulations of they exist
                         df = pd.concat(
                             [
                                 pd.read_csv(filename, index_col=0)
-                                for filename in sorted(
-                                    glob.glob(
-                                        csv_path + tech_filter_dict[tech] + ".csv"
-                                    )
-                                )
+                                for filename in sorted(filenames)
                             ],
                             axis=1,
                         )

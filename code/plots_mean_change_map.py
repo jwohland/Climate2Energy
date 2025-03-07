@@ -110,6 +110,7 @@ def spider_on_ax(df, ax, add_labels=False):
     ax.set_ylim(ymin=0, ymax=200)
     lw_ticks = 4
     if add_labels:
+        fs=9
         ax.set_yticks([50, 150], minor=True, alpha=0.8, lw=lw_ticks)
         ax.set_yticks([100], "")
         ax.grid(axis="x", alpha=0, color="Olive")
@@ -119,33 +120,33 @@ def spider_on_ax(df, ax, add_labels=False):
         # demand
         ax.annotate(
             "",
-            xy=(delta_theta * 5.5, 150),
-            xytext=(delta_theta * 5.5, 100),
+            xy=(delta_theta * 4.5, 150),
+            xytext=(delta_theta * 4.5, 100),
             arrowprops={"width": 2, "headwidth": 10, "color": "red"},
         )
-        ax.text(delta_theta * 5.5, 50, "-50%", color="blue", fontsize=9)
+        ax.text(delta_theta * 3.95, 95, "-50%", color="blue", fontsize=fs)
         ax.annotate(
             "",
-            xy=(delta_theta * 5.5, 50),
-            xytext=(delta_theta * 5.5, 100),
+            xy=(delta_theta * 4.5, 50),
+            xytext=(delta_theta * 4.5, 100),
             arrowprops={"width": 2, "headwidth": 10, "color": "blue"},
         )
-        ax.text(delta_theta * 5.0, 150, "+50%", color="red")
+        ax.text(delta_theta * 4.6, 150, "+50%", color="red", fontsize=fs)
         # supply
         ax.annotate(
             "",
-            xy=(delta_theta * 3.5, 150),
-            xytext=(delta_theta * 3.5, 100),
+            xy=(delta_theta * 0.5, 150),
+            xytext=(delta_theta * 0.5, 100),
             arrowprops={"width": 2, "headwidth": 10, "color": "red"},
         )
-        ax.text(delta_theta * 3.3, 80, "-5%", color="blue", fontsize=9)
+        ax.text(delta_theta * 0.08, 50, "-10%", color="blue", fontsize=fs)
         ax.annotate(
             "",
-            xy=(delta_theta * 3.5, 50),
-            xytext=(delta_theta * 3.5, 100),
+            xy=(delta_theta * 0.5, 50),
+            xytext=(delta_theta * 0.5, 100),
             arrowprops={"width": 2, "headwidth": 10, "color": "blue"},
         )
-        ax.text(delta_theta * 3.4, 160, "+5%", color="red", fontsize=9)
+        ax.text(delta_theta * 0.82, 105, "+10%", color="red", fontsize=fs)
         # ax.arrow(delta_theta * 3.5, 100, 0, 80, color="red", zorder=100, lw=3, width=.035)
         # matplotlib.pyplot.arrow(x, y, dx, dy, **kwargs)
     else:
@@ -154,7 +155,7 @@ def spider_on_ax(df, ax, add_labels=False):
         ax.grid(axis="x", alpha=1, color="Olive")
         ax.set_xticks([])
     # Add grey background to flag demand
-    ax.bar(delta_theta * 5.5, 200, bottom=10, width=1.8, color="grey", alpha=0.3)
+    ax.bar(delta_theta * 4.5, 200, bottom=10, width=3.6, color="grey", alpha=0.3)
     ax.grid(which="minor", alpha=0.7, lw=1.5)
     ax.grid(which="major", axis="y", alpha=1, color="black", lw=1.5)
 
@@ -210,15 +211,16 @@ def plot_roses():
             df_tmp = df_delta_CF.query(f"Metric=='mean' & Technology=='{tech}'")[
                 country
             ]
-            if tech in ["heating", "cooling"]:
+            if tech in ["heating", "cooling", "Hydropower (dam)", "Hydropower (ror)"]:
                 change_list.append(df_tmp.mean(axis=0) + 100)
                 error_minus_list.append((df_tmp.mean(axis=0) - df_tmp.min(axis=0)))
                 error_plus_list.append((df_tmp.max(axis=0) - df_tmp.mean(axis=0)))
             else:
                 # To plot all changes in same rose, generation is scaled by factor of 10
-                change_list.append(df_tmp.mean(axis=0) * 10 + 100)
-                error_minus_list.append((df_tmp.mean(axis=0) - df_tmp.min(axis=0)) * 10)
-                error_plus_list.append((df_tmp.max(axis=0) - df_tmp.mean(axis=0)) * 10)
+                scaling_factor=5
+                change_list.append(df_tmp.mean(axis=0) * scaling_factor + 100)
+                error_minus_list.append((df_tmp.mean(axis=0) - df_tmp.min(axis=0)) * scaling_factor)
+                error_plus_list.append((df_tmp.max(axis=0) - df_tmp.mean(axis=0)) * scaling_factor)
         df_country = pd.DataFrame(
             index=df_delta_CF.index.levels[0],
             data={
