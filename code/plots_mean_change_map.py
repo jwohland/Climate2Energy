@@ -110,7 +110,7 @@ def spider_on_ax(df, ax, add_labels=False):
     ax.set_ylim(ymin=0, ymax=200)
     lw_ticks = 4
     if add_labels:
-        fs=9
+        fs=10
         ax.set_yticks([50, 150], minor=True, alpha=0.8, lw=lw_ticks)
         ax.set_yticks([100], "")
         ax.grid(axis="x", alpha=0, color="Olive")
@@ -139,14 +139,14 @@ def spider_on_ax(df, ax, add_labels=False):
             xytext=(delta_theta * 0.5, 100),
             arrowprops={"width": 2, "headwidth": 10, "color": "red"},
         )
-        ax.text(delta_theta * 0.08, 50, "-10%", color="blue", fontsize=fs)
+        ax.text(delta_theta * 0.08, 50, "-5%", color="blue", fontsize=fs)
         ax.annotate(
             "",
             xy=(delta_theta * 0.5, 50),
             xytext=(delta_theta * 0.5, 100),
             arrowprops={"width": 2, "headwidth": 10, "color": "blue"},
         )
-        ax.text(delta_theta * 0.82, 105, "+10%", color="red", fontsize=fs)
+        ax.text(delta_theta * 0.82, 105, "+5%", color="red", fontsize=fs)
         # ax.arrow(delta_theta * 3.5, 100, 0, 80, color="red", zorder=100, lw=3, width=.035)
         # matplotlib.pyplot.arrow(x, y, dx, dy, **kwargs)
     else:
@@ -217,7 +217,7 @@ def plot_roses():
                 error_plus_list.append((df_tmp.max(axis=0) - df_tmp.mean(axis=0)))
             else:
                 # To plot all changes in same rose, generation is scaled by factor of 10
-                scaling_factor=5
+                scaling_factor=10
                 change_list.append(df_tmp.mean(axis=0) * scaling_factor + 100)
                 error_minus_list.append((df_tmp.mean(axis=0) - df_tmp.min(axis=0)) * scaling_factor)
                 error_plus_list.append((df_tmp.max(axis=0) - df_tmp.mean(axis=0)) * scaling_factor)
