@@ -23,10 +23,26 @@ def rolling_cyclic(df):
     return df_daily_rolling
 
 
+def convert_hydro_units(df_dict):
+    """
+    Convert hydro from "GWh per week for inflow and per day for ror" to GW
+    """
+    for experiment in ["historical", "SSP370"]:
+        for rea in ["A", "B", "C"]:
+            for rea_b in ["A", "B", "C"]:
+                df_dict[experiment]["Hydropower (ror)"][rea][rea_b] /= 24
+                df_dict[experiment]["Hydropower (dam)"][rea][rea_b] /= (24 * 7)
+    return df_dict
+
+
+
 df_dict = get_tech_timeseries_dictionary(tech_filter_dict)
 # Add offshore and onshore
 df_dict = combine_wind(df_dict, "onshore")  # mean over 3 turbines
 df_dict = combine_wind(df_dict, "offshore")  # mean over 3 turbines
+# Unit conversion of hydropower.
+df_dict = convert_hydro_units(df_dict)
+
 
 # todo remove everything that follows this if once country names have been aligned
 if 1 == 1:
