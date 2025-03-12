@@ -200,6 +200,6 @@ for country in countries:
     for i in range(3):
         axs[i].set_xticklabels("")
     plt.tight_layout()
-    fname = f"../plots/generation/cycles/seasonal_cycle_{country}_mean"
+    fname = f"../plots/paper/seasonal_cycle/seasonal_cycle_{country}_mean"
     plt.savefig(fname + ".jpeg", dpi=300)
     plt.close()
