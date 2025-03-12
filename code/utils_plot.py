@@ -63,6 +63,10 @@ def get_tech_timeseries_dictionary(tech_filter_dict):
                     filenames = [
                         name for name in filenames if "boost" not in name
                     ]  # remove boosted simulations of they exist
+                    if "shore" in tech:
+                        filenames = [
+                            name for name in filenames if "density_corrected" in name
+                        ]  # only keep density corrected wind simulations
                     df = pd.concat(
                         [
                             pd.read_csv(filename, index_col=0)
