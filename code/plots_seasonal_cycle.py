@@ -81,7 +81,7 @@ tech_panel_mapping = {
 
 for country in countries:
     # Prepare figure
-    f, axs = plt.subplots(nrows=4, figsize=(8, 10), sharex=True)
+    f, axs = plt.subplots(nrows=4, figsize=(8, 10))
     ax_ror = axs[2].twinx()
     ax_cooling = axs[3].twinx()
 
@@ -146,7 +146,23 @@ for country in countries:
                     ls=ls,
                 )
                 xlabel = ""
-                axs[3].set_xlim(xmin=-0.1, xmax=366.1)
+                ax.set_xlim(xmin=-0.1, xmax=366.1)
+                ax.set_xticklabels(
+                    [
+                        "Jan",
+                        "Feb",
+                        "Mar",
+                        "Apr",
+                        "May",
+                        "Jun",
+                        "Jul",
+                        "Aug",
+                        "Sep",
+                        "Oct",
+                        "Nov",
+                        "Dec",
+                    ]
+                )
             try:
                 label_temp = ylabels[tech.split(" ")[0]]
             except:
