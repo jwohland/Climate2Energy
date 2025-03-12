@@ -35,7 +35,6 @@ def convert_hydro_units(df_dict):
     return df_dict
 
 
-
 df_dict = get_tech_timeseries_dictionary(tech_filter_dict)
 # Add offshore and onshore
 df_dict = combine_wind(df_dict, "onshore")  # mean over 3 turbines
@@ -132,6 +131,9 @@ for country in countries:
                     fut_list.append(df_fut)
             df_hist = pd.concat(hist_list, axis=1)
             df_fut = pd.concat(fut_list, axis=1)
+            # Catch countries where cooling is always zero so they do not clutter the plots
+            if (df_hist == 0).all().all() and tech == "cooling":
+                raise KeyError
 
             for i_plot, df in enumerate([df_hist, df_fut]):
                 ls = ["solid", "--"][i_plot]
@@ -186,11 +188,17 @@ for country in countries:
             ax.set_ylabel(label_temp, fontdict={"color": color})
         except KeyError:
             print(f"{country} has no {tech}")
+            ax.axis("off")  # Don't show yaxis for variables that do not exist
     axs[0].legend(ncol=2, bbox_to_anchor=(1, 1.2), loc=1)
     axs[1].legend(loc="lower right")
     axs[0].set_title(country)
     axs[3].set_xlabel(xlabel)
-    add_letters(axs, x=-0.03, y=1.04)
+    letter_offset = 0
+    if country == "Germany":
+        letter_offset = 4
+    add_letters(axs, x=-0.04, y=1.06, letter_offset=letter_offset)
+    for i in range(3):
+        axs[i].set_xticklabels("")
     plt.tight_layout()
     fname = f"../plots/generation/cycles/seasonal_cycle_{country}_mean"
     plt.savefig(fname + ".jpeg", dpi=300)
