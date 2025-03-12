@@ -174,19 +174,7 @@ for country in countries:
     axs[1].legend(loc="lower right")
     axs[0].set_title(country)
     axs[3].set_xlabel(xlabel)
-    # Add summer highlighting
-    for ax in axs:
-        ymin, ymax = ax.get_ylim()
-        ax.fill_betweenx(
-            y=[0, 10000], x1=152, x2=244, color="red", alpha=0.1, edgecolor=None
-        )
-        ax.fill_betweenx(
-            y=[0, 10000], x1=0, x2=60, color="blue", alpha=0.1, edgecolor=None
-        )
-        ax.fill_betweenx(
-            y=[0, 10000], x1=335, x2=366, color="blue", alpha=0.1, edgecolor=None
-        )
-        ax.set_ylim(ymin=ymin, ymax=ymax)
+    add_letters(axs, x=-0.03, y=1.04)
     plt.tight_layout()
     fname = f"../plots/generation/cycles/seasonal_cycle_{country}_mean"
     plt.savefig(fname + ".jpeg", dpi=300)
