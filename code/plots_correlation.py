@@ -21,22 +21,12 @@ def compute_correlation(scenario, focus_tech, df_dict_combined, correlate_with):
         for bc_realization in ["A", "B", "C"]:
             if correlate_with == "demand_weighted_mean_generation":
                 # Compute weights
-                df_heat_mean = pd.concat(
-                    [
-                        df_dict[scenario]["heating"][x][y].mean(axis=1)
-                        for x in ["A", "B", "C"]
-                        for y in ["A", "B", "C"]
-                    ],
-                    axis=1,
-                ).mean(axis=1)
-                df_cool_mean = pd.concat(
-                    [
-                        df_dict[scenario]["cooling"][x][y].mean(axis=1)
-                        for x in ["A", "B", "C"]
-                        for y in ["A", "B", "C"]
-                    ],
-                    axis=1,
-                ).mean(axis=1)
+                df_heat_mean = df_dict[scenario]["heating"][realization][
+                    bc_realization
+                ].mean(axis=1)
+                df_cool_mean = df_dict[scenario]["cooling"][realization][
+                    bc_realization
+                ].mean(axis=1)
                 df_demand = df_heat_mean + df_cool_mean
                 df_weight = df_demand / df_demand.sum()
                 weighted_mean = (
@@ -57,24 +47,14 @@ def compute_correlation(scenario, focus_tech, df_dict_combined, correlate_with):
                     df_dict_tmp[realization][bc_realization].corrwith(mean, axis=1)
                 )
             elif correlate_with == "total_demand":
-                df_heat_Europe_ts = pd.concat(
-                    [
-                        df_dict[scenario]["heating"][x][y]
-                        for x in ["A", "B", "C"]
-                        for y in ["A", "B", "C"]
-                    ],
-                    axis=0,
-                ).mean(
+                df_heat_Europe_ts = df_dict[scenario]["heating"][realization][
+                    bc_realization
+                ].mean(
                     axis=0
                 )  # timeseries of European mean heating demand
-                df_cool_Europe_ts = pd.concat(
-                    [
-                        df_dict[scenario]["cooling"][x][y]
-                        for x in ["A", "B", "C"]
-                        for y in ["A", "B", "C"]
-                    ],
-                    axis=0,
-                ).mean(
+                df_cool_Europe_ts = df_dict[scenario]["cooling"][realization][
+                    bc_realization
+                ].mean(
                     axis=0
                 )  # timeseries of European mean cooling demand
                 df_demand_Europe_ts = df_heat_Europe_ts + df_cool_Europe_ts
