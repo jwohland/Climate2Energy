@@ -45,36 +45,45 @@ def get_tech_timeseries_dictionary(tech_filter_dict):
     :param tech_filter_dict:
     :return:
     """
-    df_dict = {}
-    for scenario in ["historical", "SSP370"]:
-        df_dict[scenario] = {}
-        for tech in tech_filter_dict.keys():
-            print(tech)
-            df_dict[scenario][tech] = {}
-            for bc_realization in ["A", "B", "C"]:
-                df_dict[scenario][tech][bc_realization] = {}
-                for realization in ["A", "B", "C"]:
-                    # Open csv file
-                    csv_path = (
-                        get_output_path(bc_realization, scenario, realization)
-                        + "output_variables/"
-                    )
-                    filenames = glob.glob(csv_path + tech_filter_dict[tech] + ".csv")
-                    filenames = [
-                        name for name in filenames if "boost" not in name
-                    ]  # remove boosted simulations of they exist
-                    if "shore" in tech:
+    # Simply open if already pre-computed
+    filename = "../output/tech_timeseries_dictionary.pkl"
+    try:  # check if already computed
+        with open(filename, "rb") as f:
+            df_dict = pickle.load(f)
+        print("Opened pre-computed tech_timeseries_dictionary")
+    except FileNotFoundError:
+        df_dict = {}
+        for scenario in ["historical", "SSP370"]:
+            df_dict[scenario] = {}
+            for tech in tech_filter_dict.keys():
+                print(tech)
+                df_dict[scenario][tech] = {}
+                for bc_realization in ["A", "B", "C"]:
+                    df_dict[scenario][tech][bc_realization] = {}
+                    for realization in ["A", "B", "C"]:
+                        # Open csv file
+                        csv_path = (
+                            get_output_path(bc_realization, scenario, realization)
+                            + "output_variables/"
+                        )
+                        filenames = glob.glob(csv_path + tech_filter_dict[tech] + ".csv")
                         filenames = [
-                            name for name in filenames if "density_corrected" in name
-                        ]  # only keep density corrected wind simulations
-                    df = pd.concat(
-                        [
-                            pd.read_csv(filename, index_col=0)
-                            for filename in sorted(filenames)
-                        ],
-                        axis=1,
-                    )
-                    df_dict[scenario][tech][bc_realization][realization] = df
+                            name for name in filenames if "boost" not in name
+                        ]  # remove boosted simulations of they exist
+                        if "shore" in tech:
+                            filenames = [
+                                name for name in filenames if "density_corrected" in name
+                            ]  # only keep density corrected wind simulations
+                        df = pd.concat(
+                            [
+                                pd.read_csv(filename, index_col=0)
+                                for filename in sorted(filenames)
+                            ],
+                            axis=1,
+                        )
+                        df_dict[scenario][tech][bc_realization][realization] = df
+        with open(filename, "wb") as f:
+            pickle.dump(df_dict, f)
     return df_dict
 
 
