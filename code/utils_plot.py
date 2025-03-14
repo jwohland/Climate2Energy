@@ -66,14 +66,25 @@ def get_tech_timeseries_dictionary(tech_filter_dict):
                             get_output_path(bc_realization, scenario, realization)
                             + "output_variables/"
                         )
-                        filenames = glob.glob(csv_path + tech_filter_dict[tech] + ".csv")
+                        filenames = glob.glob(
+                            csv_path + tech_filter_dict[tech] + ".csv"
+                        )
                         filenames = [
                             name for name in filenames if "boost" not in name
                         ]  # remove boosted simulations of they exist
                         if "shore" in tech:
                             filenames = [
-                                name for name in filenames if "density_corrected" in name
+                                name
+                                for name in filenames
+                                if "density_corrected" in name
                             ]  # only keep density corrected wind simulations
+                        if tech == "heating":
+                            # use current electrified share scenario for heating
+                            filenames = [
+                                name
+                                for name in filenames
+                                if "fully-electrified" not in name
+                            ]
                         df = pd.concat(
                             [
                                 pd.read_csv(filename, index_col=0)
