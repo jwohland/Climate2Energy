@@ -53,7 +53,8 @@ class Generation:
         ds_corr_wind = xr.open_dataset(
             f"{self.bc_output_path}bced_s100_{input_info}.nc"
         )
-        ds_rho = xr.open_dataset(f"{self.bc_output_path}rho_{input_info}.nc")
+        if self.density_correct == True:
+            ds_rho = xr.open_dataset(f"{self.bc_output_path}rho_{input_info}.nc")
         alpha = xr.open_dataset(f"{self.bc_output_path}alpha_{input_info}.nc")
 
         ####################
@@ -71,7 +72,8 @@ class Generation:
         # Save capacity factor fields
         filename = f"Wind-power_{input_info}"
         if self.density_correct:
-            filename += "_density-corrected.nc"
+            filename += "_density-corrected"
+        filename += ".nc"
         ds_CF_wind.to_netcdf(f"{self.output_path}output_variables/{filename}")
         print("Capacity factors computed. Next: country subsets and saving data")
 
@@ -165,15 +167,18 @@ if __name__ == "__main__":
     except:
         density_correct = True
         print("Defaults to with density correction.")
-
+    try:
+        output_path = sys.argv[7]
+    except:
+        output_path = False # defaults to output path used in CESM2energy
     print(
         f"Computing generation for scenario {scenario}, realization {realization},"
         f" using bias-correction based on historical realization {bc_realization}"
         f" and with density correction set to {density_correct}."
     )
     generation = Generation(
-        bc_realization, scenario, realization, density_correct=density_correct
-    ) # add you own output path here if needed
+        bc_realization, scenario, realization, density_correct=density_correct,output_path=output_path
+    )
     if technology == "Wind":
         generation.conversion_wind(input_info)
     elif technology == "PV":
