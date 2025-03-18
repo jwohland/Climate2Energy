@@ -53,9 +53,11 @@ class Generation:
         ds_corr_wind = xr.open_dataset(
             f"{self.bc_output_path}bced_s100_{input_info}.nc"
         )
+        alpha = xr.open_dataset(f"{self.bc_output_path}alpha_{input_info}.nc")
         if self.density_correct == True:
             ds_rho = xr.open_dataset(f"{self.bc_output_path}rho_{input_info}.nc")
-        alpha = xr.open_dataset(f"{self.bc_output_path}alpha_{input_info}.nc")
+        else:
+            ds_rho = None
 
         ####################
         # Step 2: Calculate capacity factors
@@ -63,9 +65,8 @@ class Generation:
         ts = time.time()
         ds_CF_wind = convert_winds(
             ds_corr_wind,
-            ds_rho,
             alpha,
-            density_correct=self.density_correct,
+            density_correct=ds_rho,
         )  # this expects that ds has variable called s_hub with hub height winds
         print(f"Wind CF finished. Took {int((time.time()-ts)/60)} minutes.")
 

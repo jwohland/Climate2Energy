@@ -81,7 +81,7 @@ def update_attrs(ds, var, unitname, varname, long_varname):
     return ds
 
 
-def convert_winds(ds_wind, ds_rho, ds_alpha, density_correct=True):
+def convert_winds(ds_wind, ds_alpha, density_correct=None):
     """
     Convert 100m wind speeds to wind capacity factors for the three turbines.
 
@@ -89,10 +89,9 @@ def convert_winds(ds_wind, ds_rho, ds_alpha, density_correct=True):
     Alpha varies in time and space.
 
     :param ds_wind: xr.dataset with 100m wind speeds available as "s_hub"
-    :param ds_wind: xr.dataset with air density
     :param alpha: wind profile exponents
     :param filename:
-    :param density_correct: Whether to apply the air density correction. Defaults to True.
+    :param density_correct: None by default, otherwise it is the xr.dataset with air density to apply the air density correction. .
     :return:
     """
     wind_power_list = []
@@ -104,8 +103,8 @@ def convert_winds(ds_wind, ds_rho, ds_alpha, density_correct=True):
         hub_height = get_hub_heights(P.turbine_name)
         ds_hub = extrapolate_wind_xr(ds_wind, 100, hub_height, ds_alpha)
         # Density correction
-        if density_correct:
-            ds_hub = density_correct_winds(ds_hub, ds_rho, hub_height)
+        if density_correct is not None: 
+            ds_hub = density_correct_winds(ds_hub, density_correct, hub_height)
         # Apply power curve
         wind_power = xr.apply_ufunc(
             P.power_conversion, ds_hub["s_hub"], vectorize=True, dask="parallelized"
