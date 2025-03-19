@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 
-def open_xarray_demandninja(input_info, bc_realization, scenario, realization):
+def open_xarray_demandninja(input_info, bc_realization, scenario, realization,output_path):
     """
     Open full datasets with variables needed for demand calculation
 
@@ -16,7 +16,6 @@ def open_xarray_demandninja(input_info, bc_realization, scenario, realization):
     Secondary variables (i.e., humidity and 10m winds) are loaded as raw CESM2 output.
     """
     # Open primary variables that have been bias-corrected already
-    output_path = get_output_path(bc_realization, scenario, realization)
     try:
         ds_temp = xr.open_dataset(
             f"{output_path}atmospheric_variables/bced_temperature_{input_info}.nc"
@@ -315,7 +314,7 @@ def scale_heating_demand(target_share, df_current_share, df_demand):
     return df_demand
 
 
-def demand_conversion(bc_realization, scenario, realization, input_info):
+def demand_conversion(bc_realization, scenario, realization, input_info, output_path):
     """
     Execute conversion from CESM2 output to heating and cooling demand for a given input_info file setup.
 
@@ -334,9 +333,10 @@ def demand_conversion(bc_realization, scenario, realization, input_info):
     demand_params = parameter_fill_ninja(demand_params)  # fill missing values
     pop_density = compute_country_population_density()
     var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
-    output_path = get_output_path(bc_realization, scenario, realization)
+    if output_path == False:
+        output_path = get_output_path(bc_realization, scenario, realization)
 
-    ds_ninja = open_xarray_demandninja(input_info, bc_realization, scenario, realization)
+    ds_ninja = open_xarray_demandninja(input_info, bc_realization, scenario, realization,output_path)
     ds_ninja.load()  # loading here once speeds up the following loop
     result_list = []  # to store country level results
     for country in demand_params.index:
@@ -380,4 +380,8 @@ if __name__ == "__main__":
     realization = str(sys.argv[2])
     bc_realization = str(sys.argv[3])
     input_info = str(sys.argv[4])
-    demand_conversion(bc_realization, scenario, realization, input_info)
+    try:
+        output_path = sys.argv[5]
+    except:
+        output_path = False # defaults to output path used in CESM2energy
+    demand_conversion(bc_realization, scenario, realization, input_info,output_path)
