@@ -124,7 +124,7 @@ def convert_winds(ds_wind, ds_alpha, density_correct=None):
     return wind_power
 
 
-def calculate_PV(ds, params=None, num_cores=1):
+def calculate_PV(ds, params=None, num_cores=1, freq="H"):
     """
     Convert temperature and radiation to PV generation capacity factors
     :param ds: xr.Dataset that contains variables "global_horizontal" and "temperature"
@@ -139,7 +139,7 @@ def calculate_PV(ds, params=None, num_cores=1):
     ds_pv = run_interface_from_dataset(
         data=ds,
         params=params,
-        frequency="H",
+        frequency=freq,
         pdfs_file=None,
         num_cores=num_cores,
     )

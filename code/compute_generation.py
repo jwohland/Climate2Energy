@@ -106,7 +106,7 @@ class Generation:
                 )
         print("Everything finished and saved")
 
-    def conversion_PV(self, input_info):
+    def conversion_PV(self, input_info,freq):
         """
         Compute solar PV generation for a given
         - bias correction realization
@@ -140,7 +140,7 @@ class Generation:
         ####################
         # Step 2: Calculate capacity factors
         ####################
-        ds_CF_PV = calculate_PV(ds_corr_PV, params=None, num_cores=32)
+        ds_CF_PV = calculate_PV(ds_corr_PV, params=None, num_cores=32,freq=freq)
 
         # Save capacity factor fields
         ds_CF_PV.to_netcdf(f"{self.output_path}output_variables/PV_{input_info}.nc")
@@ -172,6 +172,10 @@ if __name__ == "__main__":
         output_path = sys.argv[7]
     except:
         output_path = False # defaults to output path used in CESM2energy
+    try:
+        freq = sys.argv[8]
+    except:
+        freq = "H"
     print(
         f"Computing generation for scenario {scenario}, realization {realization},"
         f" using bias-correction based on historical realization {bc_realization}"
@@ -183,6 +187,6 @@ if __name__ == "__main__":
     if technology == "Wind":
         generation.conversion_wind(input_info)
     elif technology == "PV":
-        generation.conversion_PV(input_info)
+        generation.conversion_PV(input_info,freq)
     else:
         print("Technology not valid")
