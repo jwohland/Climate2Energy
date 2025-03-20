@@ -95,7 +95,7 @@ def reformat_demandninja(df):
     return df
 
 
-def compute_country_population_density(input_info):
+def compute_country_population_density(clim_model="CESM2"):
     """
     Compute Dataset with population information on the CESM2
     climate model grid per country. Output is the share of a country
@@ -120,7 +120,7 @@ def compute_country_population_density(input_info):
     for country in ds_pop_countries.country.values:
         ds_tmp = remap_to_clim_model(
             ds_pop_countries.sel(country=country),
-            input_info
+            clim_model
         )  # does not work for all countries at once. This loop is acceptable in terms of performance.
         ds_tmp[var_name] /= ds_tmp[var_name].sum()
         ds_tmp["country"] = country
@@ -128,7 +128,7 @@ def compute_country_population_density(input_info):
     return xr.concat(ds_list, dim="country")
 
 
-def remap_to_clim_model(ds,input_info):
+def remap_to_clim_model(ds,clim_model="CESM2"):
     """
     Takes population data at high resolution (2.5 minutes) and remaps it conservatively to CESM2 resolution.
     :param ds:
@@ -136,7 +136,7 @@ def remap_to_clim_model(ds,input_info):
     """
     ds.to_netcdf("../output/pop_tmp.nc")
     subprocess.run(
-        f"cdo -s remapcon,../inputs/{input_info}_atm_grid.txt ../output/pop_tmp.nc ../output/pop_remapped.nc",
+        f"cdo -s remapcon,../inputs/{clim_model}_atm_grid.txt ../output/pop_tmp.nc ../output/pop_remapped.nc",
         shell=True,
     )  # use cdo to remap where -s avoids output  weights and domain size output and -w avoids a "Time variable >raster< not found!" warning. (data has no time dimension)
     # todo  Warning (find_time_vars): Time variable >raster< not found!
@@ -315,7 +315,7 @@ def scale_heating_demand(target_share, df_current_share, df_demand):
     return df_demand
 
 
-def demand_conversion(bc_realization, scenario, realization, input_info, output_path):
+def demand_conversion(bc_realization, scenario, realization, input_info, output_path,clim_model):
     """
     Execute conversion from CESM2 output to heating and cooling demand for a given input_info file setup.
 
@@ -332,7 +332,7 @@ def demand_conversion(bc_realization, scenario, realization, input_info, output_
         "../inputs/demand_ninja_parameters.csv", index_col=0, skiprows=2
     )
     demand_params = parameter_fill_ninja(demand_params)  # fill missing values
-    pop_density = compute_country_population_density(input_info)
+    pop_density = compute_country_population_density(clim_model)
     var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
     if output_path == False:
         output_path = get_output_path(bc_realization, scenario, realization)
@@ -385,4 +385,8 @@ if __name__ == "__main__":
         output_path = sys.argv[5]
     except:
         output_path = False # defaults to output path used in CESM2energy
-    demand_conversion(bc_realization, scenario, realization, input_info,output_path)
+    try:
+        clim_model = sys.argv[6]
+    except:
+        clim_model = "CESM2"
+    demand_conversion(bc_realization, scenario, realization, input_info,output_path,clim_model)
