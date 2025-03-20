@@ -95,7 +95,7 @@ def reformat_demandninja(df):
     return df
 
 
-def compute_country_population_density():
+def compute_country_population_density(input_info):
     """
     Compute Dataset with population information on the CESM2
     climate model grid per country. Output is the share of a country
@@ -118,8 +118,9 @@ def compute_country_population_density():
     # normalize to 1 such that values mean percentage of country population per grid cell
     ds_list = []
     for country in ds_pop_countries.country.values:
-        ds_tmp = remap_to_CESM2(
-            ds_pop_countries.sel(country=country)
+        ds_tmp = remap_to_clim_model(
+            ds_pop_countries.sel(country=country),
+            input_info
         )  # does not work for all countries at once. This loop is acceptable in terms of performance.
         ds_tmp[var_name] /= ds_tmp[var_name].sum()
         ds_tmp["country"] = country
@@ -127,7 +128,7 @@ def compute_country_population_density():
     return xr.concat(ds_list, dim="country")
 
 
-def remap_to_CESM2(ds):
+def remap_to_clim_model(ds,input_info):
     """
     Takes population data at high resolution (2.5 minutes) and remaps it conservatively to CESM2 resolution.
     :param ds:
@@ -135,7 +136,7 @@ def remap_to_CESM2(ds):
     """
     ds.to_netcdf("../output/pop_tmp.nc")
     subprocess.run(
-        "cdo -s remapcon,../inputs/CESM_atm_grid.txt ../output/pop_tmp.nc ../output/pop_remapped.nc",
+        f"cdo -s remapcon,../inputs/{input_info}_atm_grid.txt ../output/pop_tmp.nc ../output/pop_remapped.nc",
         shell=True,
     )  # use cdo to remap where -s avoids output  weights and domain size output and -w avoids a "Time variable >raster< not found!" warning. (data has no time dimension)
     # todo  Warning (find_time_vars): Time variable >raster< not found!
@@ -331,7 +332,7 @@ def demand_conversion(bc_realization, scenario, realization, input_info, output_
         "../inputs/demand_ninja_parameters.csv", index_col=0, skiprows=2
     )
     demand_params = parameter_fill_ninja(demand_params)  # fill missing values
-    pop_density = compute_country_population_density()
+    pop_density = compute_country_population_density(input_info)
     var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
     if output_path == False:
         output_path = get_output_path(bc_realization, scenario, realization)
