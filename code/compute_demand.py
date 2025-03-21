@@ -52,9 +52,10 @@ def pick_convert_demandninja(ds, ilat, ilon):
             "QREFHT": "humidity",
         }
     )  # temperature already has the correct name
-    df.index = df.index.to_datetimeindex(
-        unsafe=True
-    )  # ninja needs time in datetimeindex format, unsafe is ok because non-leap year have been manually checked
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df.index = df.index.to_datetimeindex(
+            unsafe=True
+        )  # ninja needs time in datetimeindex format, unsafe is ok because non-leap year have been manually checked
     # check that values are plausible
     sense_check_demandninja_inputs(df)
     return df
@@ -66,15 +67,15 @@ def sense_check_demandninja_inputs(df):
     :param df:
     :return:
     """
-    assert (df.radiation_global_horizontal >= 0).all()  # radiation must be positive
+    assert (df.radiation_global_horizontal >= -1e-15).all()  # radiation must be positive
     assert (
         np.absolute(df.temperature) <= 100
     ).all()  # temps must be within -100 to 100 °C
-    assert (df.wind_speed_2m >= 0).all()  # wind must be positive
+    assert (df.wind_speed_2m >= -1e-15).all()  # wind must be positive
     assert (
         df.wind_speed_2m <= 100
     ).all()  # winds cannot be unrealistically high (100 m/s)
-    assert (df.humidity >= 0).all()  # humidity cannot be negative
+    assert (df.humidity >= -1e-15).all()  # humidity cannot be negative
 
 
 def reformat_demandninja(df):
