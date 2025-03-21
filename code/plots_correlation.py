@@ -145,6 +145,6 @@ for correlate_with in [
         plt.subplots_adjust(bottom=0.1, left=0.25, right=0.9, top=0.98)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation);
         plt.savefig(
-            f"../plots/paper/correlation/correlation_change_{correlate_with}.jpeg", dpi=300
+            f"../plots/paper/correlation/correlation_change_{correlate_with}_all_{all_countries}.jpeg", dpi=300
         )
         plt.close()
