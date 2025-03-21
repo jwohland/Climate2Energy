@@ -46,23 +46,6 @@ def compute_correlation(scenario, focus_tech, df_dict_combined, correlate_with):
                 corr_list.append(
                     df_dict_tmp[realization][bc_realization].corrwith(mean, axis=1)
                 )
-            elif correlate_with == "total_demand":
-                df_heat_Europe_ts = df_dict[scenario]["heating"][realization][
-                    bc_realization
-                ].mean(
-                    axis=0
-                )  # timeseries of European mean heating demand
-                df_cool_Europe_ts = df_dict[scenario]["cooling"][realization][
-                    bc_realization
-                ].mean(
-                    axis=0
-                )  # timeseries of European mean cooling demand
-                df_demand_Europe_ts = df_heat_Europe_ts + df_cool_Europe_ts
-                corr_list.append(
-                    df_dict_tmp[realization][bc_realization].corrwith(
-                        df_demand_Europe_ts, axis=1
-                    )
-                )
     df_corr = pd.concat(corr_list, axis=1)
     return df_corr
 
@@ -72,16 +55,27 @@ df_dict = get_tech_timeseries_dictionary(tech_filter_dict)
 df_dict_with_onshore = combine_wind(df_dict, "onshore")
 df_dict_combined = combine_wind(df_dict_with_onshore, "offshore")
 
+# Define country subset to be shown in reduced plots
+country_subset = [
+    "United Kingdom",
+    "Poland",
+    "Germany",
+    "Italy",
+    "France",
+    "Spain",
+    "Norway",
+    "Greece",
+]
 
 # Make actual plots
 
 for correlate_with in [
     "demand_weighted_mean_generation",
     "mean_generation",
-    "total_demand",
 ]:
-    # Calculate difference in correlation
+    # Calculate difference in correlation and agreement on sign of change
     diff_list = []
+    agree_list = []
     for focus_tech in [
         "Wind onshore",
         "Wind offshore",
@@ -99,28 +93,58 @@ for correlate_with in [
             name=focus_tech
         )
         diff_list.append(diff)
+        N_same_sign = ((df_corr_future - df_corr_hist) > 0).sum(axis=1)
+        agree_list.append(N_same_sign.to_frame(name=focus_tech))
     diffs = pd.concat(diff_list, axis=1)
+    agreement = pd.concat(agree_list, axis=1)
 
     # Plotting
-    f, ax = plt.subplots(ncols=1, figsize=(10, 12))
-    cbar_ax = f.add_axes([0.25, 0.05, 0.7, 0.02])
-    sns.heatmap(
-        diffs.sort_values(by="Wind onshore", ascending=False),
-        ax=ax,
-        vmin=-0.05,
-        vmax=0.05,
-        annot=True,
-        fmt=".2f",
-        cmap=sns.color_palette("coolwarm", n_colors=10),
-        cbar_kws={
-            "label": "Change in Pearson correlation (SSP370 - historical)",
-            "orientation": "horizontal",
-        },
-        cbar_ax=cbar_ax,
-    )
-    ax.set_ylabel("")
-    plt.subplots_adjust(bottom=0.1, left=0.25, right=0.9, top=0.98)
-    plt.savefig(
-        f"../plots/paper/correlation/correlation_change_{correlate_with}.jpeg", dpi=300
-    )
-    plt.close()
+    diffs = diffs.sort_values(by="Wind onshore", ascending=False)
+    for all_countries in [True, False]:
+        if all_countries:
+            figsize=(10, 12)
+            bottom = 0.2
+            rotation=90
+            left = .25
+            bottom_colorbar = 0.05
+        else:
+            figsize=(10,6)
+            bottom = 0.28
+            rotation=45
+            left = .13
+            bottom_colorbar = 0.07
+
+        f, ax = plt.subplots(ncols=1, figsize=figsize)
+        cbar_ax = f.add_axes([0.25, bottom_colorbar, 0.7, 0.02])
+
+        for threshold in range(10):
+            if threshold in [9, 0]:
+                annot_kws ={"weight": "bold"}
+            else:
+                annot_kws = {}
+            diffs_tmp = diffs[agreement == threshold]
+            if not all_countries:
+                diffs_tmp = diffs_tmp.loc[country_subset]
+            sns.heatmap(
+                diffs_tmp,
+                ax=ax,
+                vmin=-0.08,
+                vmax=0.08,
+                annot=True,
+                fmt=".2f",
+                annot_kws=annot_kws,
+                cmap=sns.color_palette("coolwarm", n_colors=16),
+                cbar_kws={
+                    "label": "Correlation change relative to European mean (SSP370 - historical)",
+                    "orientation": "horizontal",
+                },
+                cbar_ax=cbar_ax,
+            )
+
+        ax.set_ylabel("")
+        plt.subplots_adjust(bottom=0.1, left=0.25, right=0.9, top=0.98)
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation);
+        plt.savefig(
+            f"../plots/paper/correlation/correlation_change_{correlate_with}.jpeg", dpi=300
+        )
+        plt.close()
