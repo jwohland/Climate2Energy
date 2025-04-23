@@ -283,7 +283,7 @@ def open_entsoe(tech):
         ds = open_entsoe_ror()
     else:
         print("Technology not recognized. Please choose 'inflow' or 'ror'")
-    return scale_up(ds, tech)
+    return ds
 
 
 def open_discharge_entsoe_for_calibration(era5_discharge, tech):
