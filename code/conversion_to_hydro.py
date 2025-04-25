@@ -206,7 +206,7 @@ def open_discharge(input_path):
 
 
 
-def open_era(mod_lat, mod_lon, output_path, input_info,model):
+def open_era(mod_lat, mod_lon, output_path, input_info, model):
     """
     Opens ERA5 discharge, and preprocesses it to fit the naming conventions
     If the file doesn't exist, the function creates the necessary file
@@ -222,8 +222,8 @@ def open_era(mod_lat, mod_lon, output_path, input_info,model):
         :param mod_lon: longitude grid of the climate model
         """
         ds = ds.rename({"latitude": "lat", "longitude": "lon", "dis24": "discharge"})
+        ds = ds.reindex(lat=ds.lat[::-1])
         if model == "CESM2":
-            ds = ds.reindex(lat=ds.lat[::-1])
             coarsen = 10
         elif model == "CORDEX":
             coarsen = 2
