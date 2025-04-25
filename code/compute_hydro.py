@@ -6,16 +6,14 @@ from utils import store_as_pandas_dataframe
 
 if __name__ == "__main__":
     # parameters
-    scenario = sys.argv[1]
-    realization = sys.argv[2]
-    bc_realization = sys.argv[3]
-    input_path = sys.argv[4]
-    input_info = sys.argv[5]
+    input_path = sys.argv[1]
+    input_info = sys.argv[2]
+    output_path = sys.argv[3]
+    model = sys.argv[4]
     try:
-        output_path = sys.argv[6]
+        bias_correction = sys.argv[5]
     except:
-        output_path = get_output_path(bc_realization, scenario, realization)
-    
+        bias_correction = False
     technologies = ["ror", "inflow"]
     rolling = {
         "ror": 21,
@@ -28,14 +26,16 @@ if __name__ == "__main__":
 
     # === CESM2 discharge ===
     print("Open CESM2 and ERA5 discharge")
-    # open CESM2 discharge HIST, for bias correction
-    discharge_full_for_bc = open_discharge_with_downscaling("historical", bc_realization)
-    # opening ERA5 discharge for 1995-2015, for bias correction and for 2016-2023 for run-of-river calibration
-    era5_discharge_full = open_era(discharge_full_for_bc.lat, discharge_full_for_bc.lon)
     # Bias correction
     try:
         bced_discharge = xr.open_dataset(f"{output_path}atmospheric_variables/bced_discharge_{input_info}.nc") 
+        #Open ERA5 for translation calibration
+        era5_discharge_full = open_era(bced_discharge.lat, bced_discharge.lon)
     except:
+        # open CESM2 discharge HIST, for bias correction
+        discharge_full_for_bc = open_discharge_with_downscaling("historical", bc_realization)
+        # opening ERA5 discharge for 1995-2015, for bias correction and for 2016-2023 for translation calibration
+        era5_discharge_full = open_era(discharge_full_for_bc.lat, discharge_full_for_bc.lon)
         # open CESM2 discharge
         discharge_full = open_discharge(f"{input_path}")
         print("Bias correct CESM2")

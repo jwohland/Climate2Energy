@@ -206,30 +206,35 @@ def open_discharge(input_path):
 
 
 
-def open_era(cesm_lat, cesm_lon):
+def open_era(mod_lat, mod_lon, output_path, input_info,model):
     """
     Opens ERA5 discharge, and preprocesses it to fit the naming conventions
     If the file doesn't exist, the function creates the necessary file
     """
     # ERA5 discharge for the ENTSO-e time range
-    file_name = "../output/bias_correction/Raw_ERA5_discharge.nc"
+    file_name = f"{output_path}Raw_ERA5_discharge{input_info}.nc"
 
-    def preprocess_era(ds):
+    def preprocess_era(ds,model):
         """
         changes variable names to fit CESM2 standard, and changes lat order to go from 90->-90 to -90->90
         :param ds: dataset
-        :param cesm_lat: latitude grid of CESM2,
+        :param mod_lat: latitude grid of the climate model
+        :param mod_lon: longitude grid of the climate model
         """
         ds = ds.rename({"latitude": "lat", "longitude": "lon", "dis24": "discharge"})
-        ds = ds.reindex(lat=ds.lat[::-1])
-        ds_co = ds.coarsen(lat=10, lon=10, boundary="trim").sum()
+        if model == "CESM2":
+            ds = ds.reindex(lat=ds.lat[::-1])
+            coarsen = 10
+        elif model == "CORDEX":
+            coarsen = 2
+        ds_co = ds.coarsen(lat=coarsen, lon=coarsen, boundary="trim").sum()
         ds_co = select_Europe(ds_co)
         # since the ERA5 grid is exactly 10 higher resolution than CESM2, the two grids should have the same length after selecting Europe. However, there might be slight differences in the absolute values of the grids (lat = 30.2 instead of 30.25) due to the coarsening. That is why we assign the lat and lon values of CESM2 here.
-        if len(ds_co.lat) == len(cesm_lat) and len(ds_co.lon) == len(cesm_lon):
-            ds_co["lat"] = cesm_lat
-            ds_co["lon"] = cesm_lon
+        if len(ds_co.lat) == len(mod_lat) and len(ds_co.lon) == len(mod_lon):
+            ds_co["lat"] = mod_lat
+            ds_co["lon"] = mod_lon
         else:
-            print("Error: CESM2 and ERA5 grid are not same length")
+            print("Error: climate model and ERA5 grid are not same length")
         return ds_co
 
     try:
@@ -240,7 +245,7 @@ def open_era(cesm_lat, cesm_lon):
             f"../inputs/ERA5/discharge_{year}.nc" for year in range(1995, 2023)
         ]  # historical+calbration ERA5 data
         ds_era5 = xr.open_mfdataset(files, preprocess=preprocess_era, combine="nested")
-        ds_era5.to_netcdf(f"../output/bias_correction/Raw_ERA5_discharge.nc")
+        ds_era5.to_netcdf(file_name)
 
     return ds_era5
 
@@ -549,7 +554,7 @@ def open_entsoe_inflow():
 # ==================================
 
 
-def weighted_aggregation(ds_discharge, tech):
+def weighted_aggregation(ds_discharge, tech, input_info):
     """
     Aggregates the discharge data to country level, using the JRC dataset as a reference for the weighting coefficients.
     """
@@ -572,7 +577,7 @@ def weighted_aggregation(ds_discharge, tech):
         country_code_to_country_name(country_code) for country_code in country_code_list
     ]
 
-    file_name = f"../inputs/normalized_capacity_{tech}.nc"
+    file_name = f"../inputs/normalized_capacity_{tech}{input_info}.nc"
     try:
         ds_C = xr.open_dataset(file_name)
     except FileNotFoundError:
