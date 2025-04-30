@@ -80,8 +80,8 @@ ylabels = {
     "heating": "Heating demand [GW]",
     "cooling": "Cooling demand [GW]",
     "Wind": "Wind Capacity Factor",
-    "Hydropower (ror)": "Hydropower ror generation [GW]",
-    "Hydropower (dam)": "Hydropower inflow [GW]",
+    "Hydropower (ror)": "Run-of-river generation [GW]",
+    "Hydropower (dam)": "Reservoir inflow [GW]",
 }
 
 tech_panel_mapping = {
