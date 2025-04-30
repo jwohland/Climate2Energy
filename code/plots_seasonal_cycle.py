@@ -1,4 +1,5 @@
 from utils_plot import *
+from matplotlib.lines import Line2D
 
 
 def rolling_cyclic(df):
@@ -31,7 +32,7 @@ def convert_hydro_units(df_dict):
         for rea in ["A", "B", "C"]:
             for rea_b in ["A", "B", "C"]:
                 df_dict[experiment]["Hydropower (ror)"][rea][rea_b] /= 24
-                df_dict[experiment]["Hydropower (dam)"][rea][rea_b] /= (24 * 7)
+                df_dict[experiment]["Hydropower (dam)"][rea][rea_b] /= 24 * 7
     return df_dict
 
 
@@ -43,7 +44,6 @@ df_dict = combine_wind(df_dict, "offshore")  # mean over 3 turbines
 df_dict = convert_hydro_units(df_dict)
 
 
-# todo remove everything that follows this if once country names have been aligned
 if 1 == 1:
     unify_country_names = {
         "AT": "Austria",
@@ -96,7 +96,7 @@ tech_panel_mapping = {
 
 for country in countries:
     # Prepare figure
-    f, axs = plt.subplots(nrows=4, figsize=(8, 10))
+    f, axs = plt.subplots(nrows=4, figsize=(6, 10))
     ax_ror = axs[2].twinx()
     ax_cooling = axs[3].twinx()
 
@@ -189,9 +189,16 @@ for country in countries:
         except KeyError:
             print(f"{country} has no {tech}")
             ax.axis("off")  # Don't show yaxis for variables that do not exist
-    axs[0].legend(ncol=2, bbox_to_anchor=(1, 1.2), loc=1)
+    # Adding a SSP / historical legend in black for all subplots
+    custom_lines = [
+        Line2D([0], [0], color="black", lw=1.5),
+        Line2D([0], [0], color="black", lw=1.5, ls="--"),
+    ]  # dummy lines of length zero
+    axs[0].legend(
+        custom_lines, ["historical", "SSP3-7.0"], ncol=2, bbox_to_anchor=(1, 1.2), loc=1
+    )
     axs[1].legend(loc="lower right")
-    axs[0].set_title(country)
+    axs[0].set_title(country, fontsize=14, loc="left")
     axs[3].set_xlabel(xlabel)
     letter_offset = 0
     if country == "Germany":
