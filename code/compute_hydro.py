@@ -55,7 +55,7 @@ if __name__ == "__main__":
             bced_discharge.to_netcdf(
                 f"{output_path}atmospheric_variables/bced_discharge_{input_info}.nc"
             )
-        
+        print("files opened")
         # aggregation
         for tech in technologies:
             print(f"Aggregate CESM2 and ERA5 for tech {tech}")

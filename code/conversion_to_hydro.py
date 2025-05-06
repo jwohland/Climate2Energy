@@ -240,11 +240,13 @@ def open_era(mod_lat, mod_lon, output_path, input_info, model):
     try:
         ds_era5 = xr.open_dataset(file_name)
     except FileNotFoundError:
+        def preproc(ds):
+            return preprocess_era(ds,model)
         print("ERA5 discharge files not found. Creating them.")
         files = [
             f"../inputs/ERA5/discharge_{year}.nc" for year in range(1995, 2023)
         ]  # historical+calbration ERA5 data
-        ds_era5 = xr.open_mfdataset(files, preprocess=preprocess_era, combine="nested")
+        ds_era5 = xr.open_mfdataset(files, preprocess=preproc, combine="nested")
         ds_era5.to_netcdf(file_name)
 
     return ds_era5
