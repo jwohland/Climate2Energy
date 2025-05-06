@@ -234,7 +234,7 @@ def open_era(mod_lat, mod_lon, output_path, input_info, model):
             ds_co["lat"] = mod_lat
             ds_co["lon"] = mod_lon
         else:
-            print("Error: climate model and ERA5 grid are not same length")
+            print(f"Error: {model} ({len(ds_co.lat)}) and ERA5 ({len(mod_lat)}) grid are not same length")
         return ds_co
 
     try:
