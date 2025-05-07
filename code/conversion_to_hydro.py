@@ -226,14 +226,14 @@ def open_era(mod_lat, mod_lon, output_path, input_info, model):
         if model == "CESM2":
             coarsen = 10
             # since the ERA5 grid is exactly 10 higher resolution than CESM2, the two grids should have the same length after selecting Europe. However, there might be slight differences in the absolute values of the grids (lat = 30.2 instead of 30.25) due to the coarsening. That is why we assign the lat and lon values of CESM2 here.
-            if len(ds_co.lat) == len(mod_lat) and len(ds_co.lon) == len(mod_lon):
-                ds_co["lat"] = mod_lat
-                ds_co["lon"] = mod_lon
-            else:
-                print(f"Error: {model} ({len(ds_co.lat)},{len(ds_co.lon)}) and ERA5 ({len(mod_lat)},{len(mod_lon)}) grid are not same length")
         elif model == "CORDEX":
             coarsen = 2
         ds_co = ds.coarsen(lat=coarsen, lon=coarsen, boundary="trim").sum()
+        if len(ds_co.lat) == len(mod_lat) and len(ds_co.lon) == len(mod_lon):
+            ds_co["lat"] = mod_lat
+            ds_co["lon"] = mod_lon
+        else:
+            print(f"Error: {model} ({len(ds_co.lat)},{len(ds_co.lon)}) and ERA5 ({len(mod_lat)},{len(mod_lon)}) grid are not same length")
         ds_co = select_Europe(ds_co)
         return ds_co
 
