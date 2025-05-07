@@ -59,11 +59,11 @@ if __name__ == "__main__":
     # aggregation
     for tech in technologies:
         print(f"Aggregate CESM2 and ERA5 for tech {tech}")
-        discharge = weighted_aggregation(bced_discharge, tech,input_info).discharge
+        discharge = weighted_aggregation(bced_discharge, tech,model).discharge
         if tech == "inflow":
             discharge = resample_weekly(discharge)  # get cesm2 in weekly resolution
 
-        era5_discharge = weighted_aggregation(era5_discharge_full, tech,input_info)
+        era5_discharge = weighted_aggregation(era5_discharge_full, tech,model)
 
         # === calibration data (ENTSO-e and ERA5 (2016-2023) ===
         print(f"Open ENTSO-e data for tech {tech}")
