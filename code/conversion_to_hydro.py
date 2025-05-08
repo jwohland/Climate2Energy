@@ -228,6 +228,7 @@ def open_era(mod_lat, mod_lon, output_path, input_info, model):
             # since the ERA5 grid is exactly 10 higher resolution than CESM2, the two grids should have the same length after selecting Europe. However, there might be slight differences in the absolute values of the grids (lat = 30.2 instead of 30.25) due to the coarsening. That is why we assign the lat and lon values of CESM2 here.
         elif model == "CORDEX":
             coarsen = 2
+            ds = select_Europe(ds)
         ds_co = ds.coarsen(lat=coarsen, lon=coarsen, boundary="trim").sum()
         if len(ds_co.lat) == len(mod_lat) and len(ds_co.lon) == len(mod_lon):
             ds_co["lat"] = mod_lat
