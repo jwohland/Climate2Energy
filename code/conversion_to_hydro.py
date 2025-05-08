@@ -206,13 +206,13 @@ def open_discharge(input_path):
 
 
 
-def open_era(mod_lat, mod_lon, output_path, input_info, model):
+def open_era(mod_lat, mod_lon, output_path, model):
     """
     Opens ERA5 discharge, and preprocesses it to fit the naming conventions
     If the file doesn't exist, the function creates the necessary file
     """
     # ERA5 discharge for the ENTSO-e time range
-    file_name = f"{output_path}Raw_ERA5_discharge{input_info}.nc"
+    file_name = f"{output_path}Raw_ERA5_discharge{model}.nc"
 
     def preprocess_era(ds,model):
         """

@@ -30,7 +30,7 @@ if __name__ == "__main__":
     try:
         bced_discharge = xr.open_dataset(f"{output_path}atmospheric_variables/bced_discharge_{input_info}.nc") 
         #Open ERA5 for translation calibration
-        era5_discharge_full = open_era(bced_discharge.lat, bced_discharge.lon, output_path, input_info, model)
+        era5_discharge_full = open_era(bced_discharge.lat, bced_discharge.lon, output_path, model)
     except:
         if bc_realization == False:
             print("error: no bias correction realization input")
