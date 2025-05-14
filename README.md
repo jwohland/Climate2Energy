@@ -135,3 +135,14 @@ The conversion to wind capacity factors is based on power curves from the windpo
 
 [1] https://github.com/wind-python/windpowerlib/blob/dev/windpowerlib/oedb/power_curves.csv
 [2] Wohland, J., Brayshaw, D. & Pfenninger, S. Mitigating a century of European renewable variability with transmission and informed siting. Environ. Res. Lett. 16, 064026 (2021).
+
+## Seperating the outputs
+
+### Get just the .csv files in one folder
+
+From `output/bias_correction/`, run `cp --parents */*/*/output_variables/*.csv only_csv/`.
+
+### Get just the .nc files for the main realizations in one folder
+
+Again from `output/bias_correction/`, run `cp --parents A/*/A/output_variables/*.nc only_nc/`, then `cp --parents B/*/B/output_variables/*.nc only_nc/`, and `cp --parents C/*/C/output_variables/*.nc only_nc/`.
+
