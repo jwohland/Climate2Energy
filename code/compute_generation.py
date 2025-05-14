@@ -66,8 +66,8 @@ class Generation:
         # Save capacity factor fields
         filename = f"Wind-power_{str(year)}"
         if self.density_correct:
-            filename += "_density-corrected.nc"
-        ds_CF_wind.to_netcdf(f"{self.output_path}output_variables/{filename}")
+            filename += "_density-corrected"
+        ds_CF_wind.to_netcdf(f"{self.output_path}output_variables/{filename}.nc")
         print("Capacity factors computed. Next: country subsets and saving data")
 
         # Step 3: subset countries
