@@ -118,6 +118,14 @@ We are currently using daily mean values for RSDS and TREFHT, while wind speed i
 Information of the grid used by the climate model needs to be provided for the bias correction. 
 The code reads grid information from `inputs/CESM_atm_grid.txt`.
 
+#### Overview of climate model realizations
+
+| Name  | historical (1995-2015) | SSP370 (2080-2100) | SSP245 (2080-2100) |
+| ------------- | ------------- |------------- | ------------- |
+| `A`  | **real = 1500**  | **real = 1500** | **real = 1500** | 
+| `B`  | **max(NAO): real =1000** |  **max(NAO): real = 0600** |  | 
+| `C`  | **min(NAO): real =1200** | **min(NAO): real = 0900** |  | 
+
 #### Bias correction 
 Currently, the "ground truth" values used for bias correction comes from ERA5 data, regridded to CESM2 resolution (spatial + temporal). 
 
