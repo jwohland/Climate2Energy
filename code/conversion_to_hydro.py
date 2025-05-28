@@ -283,7 +283,7 @@ def open_entsoe(tech):
         ds = open_entsoe_ror()
     else:
         print("Technology not recognized. Please choose 'inflow' or 'ror'")
-    return scale_up(ds, tech)
+    return ds
 
 
 def open_discharge_entsoe_for_calibration(era5_discharge, tech):
@@ -733,19 +733,6 @@ def read_power_stats_prod(countries, tech):
         prod_per_country, dims=["country"], coords={"country": list(countries)}
     )
     return prod_per_country
-
-
-def scale_up(ds, tech):
-    """
-    Scales output to fit average annual hydropower production values for each country
-    :param ds: DataArray of transformed discharge-to-hydro, per country
-    :param tech: string
-    """
-    annual_reported_production = read_power_stats_prod(country_name_to_country_code(list(ds.country.values)), tech)
-    annual_reported_production["country"] =list(ds.country.values)
-    annual_mean_production_here = ds.groupby("time.year").sum("time").mean("year")
-    scaled_output = ds * (annual_reported_production / annual_mean_production_here)
-    return scaled_output
 
 
 def country_code_to_country_name(code):
