@@ -27,7 +27,7 @@ def get_time_range(scenario):
     range_dict = {
         "historical": range(1995, 2015),
         "SSP370": range(2080, 2100),
-        "SSP245": range(2080, 2100),
+        "SSP245": range(2015, 2100),
     }
     return range_dict[scenario]
 
@@ -48,8 +48,12 @@ def get_input_filename(scenario, realization, year):
         tmp += scenario  # i.e., + SSP370 or SSP245
     tmp += "cmip6.f09_g17."
     tmp += CESM2_REALIZATION_DICT[scenario][realization]
+    if scenario == "SSP245":
+        nb = "00000"
+    else:
+        nb = "03600"
     assembled_path = (
-        f"{shared_path}{tmp}/archive/atm/hist/{tmp}.cam.h6.{year}-01-01-03600.nc"
+        f"{shared_path}{tmp}/archive/atm/hist/{tmp}.cam.h6.{year}-01-01-{nb}.nc"
     )
     return assembled_path
 

@@ -12,7 +12,6 @@ dependencies:
   - nc-time-axis
   - bias_correction
   - tqdm
-  - windpowerlib
 # gsee pins an old version of xarray, but the github (developer) version solves this. This is how to install it
   - basemap >= 1.1.0
   - Cython >= 0.28.5

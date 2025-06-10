@@ -74,6 +74,7 @@ class Correction:
                 f"Bias correction finished. Took {int((time.time()-ts)/60)} minutes."
             )
 
+            time_unit_dict = {'time':{'units': f"hours since {year}-01-01 00:00:00" }}
             # Save bias-corrected fields
             ds_corr_wind.to_netcdf(f"{bc_output_path}bced_s100_{input_info}.nc")
             ds_corr_PV["temperature"].to_dataset().to_netcdf(
@@ -99,5 +100,5 @@ if __name__ == "__main__":
         f" using bias-correction based on historical realization {bc_realization}"
     )
     correction = Correction(bc_realization, scenario, realization)
-    # execute with one process per year
+    # execute
     correction.bias_correction(input_path, input_info)

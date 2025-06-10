@@ -118,6 +118,14 @@ We are currently using daily mean values for RSDS and TREFHT, while wind speed i
 Information of the grid used by the climate model needs to be provided for the bias correction. 
 The code reads grid information from `inputs/CESM_atm_grid.txt`.
 
+#### Overview of climate model realizations
+
+| Name  | historical (1995-2015) | SSP370 (2080-2100) | SSP245 (2080-2100) |
+| ------------- | ------------- |------------- | ------------- |
+| `A`  | **real = 1500**  | **real = 1500** | **real = 1500** | 
+| `B`  | **max(NAO): real =1000** |  **max(NAO): real = 0600** |  | 
+| `C`  | **min(NAO): real =1200** | **min(NAO): real = 0900** |  | 
+
 #### Bias correction 
 Currently, the "ground truth" values used for bias correction comes from ERA5 data, regridded to CESM2 resolution (spatial + temporal). 
 
@@ -127,3 +135,18 @@ The conversion to wind capacity factors is based on power curves from the windpo
 
 [1] https://github.com/wind-python/windpowerlib/blob/dev/windpowerlib/oedb/power_curves.csv
 [2] Wohland, J., Brayshaw, D. & Pfenninger, S. Mitigating a century of European renewable variability with transmission and informed siting. Environ. Res. Lett. 16, 064026 (2021).
+
+## Climate2Energy output
+### Output units
+Climate2Energy provides country-level .csv files of all considered technologies (Wind, PV, demand, hydro inflow and hydro ror). For Wind and PV, the file is output as hourly capacity factors (between 0 and 1). For demand, the file is output as hourly GWh. For hydro inflow and hydro ror, the output is also GWh, but the timesteps are weekly and daily, respectively, which means that the output is the cumulative GWh in that week or day. To get output as GWh per hour, a simple fix would be to resample the dataset to hourly (ffill() + divide all values by 24*7 or 24, respectively).
+
+### Get just the .csv files in one folder
+From `output/bias_correction/`, run `cp --parents */*/*/output_variables/*.csv only_csv/`.
+
+### Get just the .nc files for the main realizations in one folder
+Again from `output/bias_correction/`, run `cp --parents A/*/A/output_variables/*.nc only_nc/`, then `cp --parents B/*/B/output_variables/*.nc only_nc/`, and `cp --parents C/*/C/output_variables/*.nc only_nc/`.
+
+### Generalization beyond CESM2
+To run the conversion tool for another climate model than CESM2, you will need to use the branch generalize_IO. Here you can specifiy your own input files and output location. Note that you will still have to preprocess you files to match the naming conventions used in the conversion tool (see preprocess_cordex.py for an example of this).
+However, bias correction is not yet implemented in the generalize_IO branch. If you need to bias correct your data as part of the conversion, you will need to fork the repo and change the file paths according to the data you have available.
+

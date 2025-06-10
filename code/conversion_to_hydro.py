@@ -21,9 +21,21 @@ from utils import (
 # =================================
 # === PREPROCESSING AND OPENING ===
 # =================================
+def shift_by_one_month(date):
+    # Get current year and month
+    year, month = date.year, date.month
+    
+    # Increment month and handle year rollover
+    if month == 1:
+        year -= 1
+        month = 12
+    else:
+        month -= 1
+    
+    # Return new date while preserving the day
+    return type(date)(year, month, date.day) 
 
-
-def downscale(ds_discharge, ds_runoff, file_name):
+def downscale(ds_discharge, ds_runoff, time_range, file_name):
     """
     Takes monthly mean river discharge and interpolates to daily data assuming
     that the sub-monthly evolution of river discharge and runoff are identical.
@@ -60,15 +72,15 @@ def downscale(ds_discharge, ds_runoff, file_name):
         ]
 
     ds_runoff_mean["time"] = normalize_to_midnight(ds_runoff_mean.time.values)
+    # shift one month back
+    ds_discharge["time"] = [shift_by_one_month(f) for f in ds_discharge["time"].values]
     ## Expand monthly discharge to daily discharge
     ds_discharge_daily = (
         ds_discharge.resample(time="1D")
-        .ffill()
+        .bfill()
         .rename({"discharge": "discharge_expanded"})
-    )
-    ds_discharge_daily["time"] = ds_discharge_daily.time + dt.timedelta(
-        days=-31
-    )  # shift one month back
+    ).sel(time=slice(str(time_range[0]),str(time_range[-1]))) # make sure only the exact time range is chosen
+    
     ## Match time coordinates of the two datasets: discharge_daily and runoff_mean
     ds_runoff_mean = ds_runoff_mean.sel(time=ds_discharge_daily.time)
     ## Expand runoff_mean, to include latitude and longitude
@@ -128,6 +140,10 @@ def create_discharge(scenario, realization):
     path = (
         f"/net/meso/climphys/cesm212/b.e212.B{period}cmip6.f09_g17.{file_real}/archive/"
     )
+    if scenario == "SSP245":
+        nb = "00000"
+    else:
+        nb = "03600"
     files_dis, files_run = [], []
     for year in time_range:
         for month in [f"{m:02d}" for m in range(1, 13)]:
@@ -135,7 +151,7 @@ def create_discharge(scenario, realization):
                 f"{path}rof/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.mosart.h0.{year}-{month}.nc"
             )
         files_run.append(
-            f"{path}lnd/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.clm2.h6.{year}-01-01-03600.nc"
+            f"{path}lnd/hist/b.e212.B{period}cmip6.f09_g17.{file_real}.clm2.h6.{year}-01-01-{nb}.nc"
         )
     # add the last file. example: 2100-01-01 has info about 2099-12-31, so needs to be added
     year = year + 1  # year after last year in time range
@@ -170,6 +186,7 @@ def create_discharge(scenario, realization):
     downscale(
         discharge,
         runoff,
+        time_range,
         f"{output}/atmospheric_variables/CESM2_discharge.nc",
     )
 
@@ -288,7 +305,7 @@ def open_entsoe(tech):
         ds = open_entsoe_ror()
     else:
         print("Technology not recognized. Please choose 'inflow' or 'ror'")
-    return scale_up(ds, tech)
+    return ds
 
 
 def open_discharge_entsoe_for_calibration(era5_discharge, tech):
@@ -738,19 +755,6 @@ def read_power_stats_prod(countries, tech):
         prod_per_country, dims=["country"], coords={"country": list(countries)}
     )
     return prod_per_country
-
-
-def scale_up(ds, tech):
-    """
-    Scales output to fit average annual hydropower production values for each country
-    :param ds: DataArray of transformed discharge-to-hydro, per country
-    :param tech: string
-    """
-    annual_reported_production = read_power_stats_prod(country_name_to_country_code(list(ds.country.values)), tech)
-    annual_reported_production["country"] =list(ds.country.values)
-    annual_mean_production_here = ds.groupby("time.year").sum("time").mean("year")
-    scaled_output = ds * (annual_reported_production / annual_mean_production_here)
-    return scaled_output
 
 
 def country_code_to_country_name(code):
