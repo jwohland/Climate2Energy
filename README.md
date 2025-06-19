@@ -119,18 +119,28 @@ Save the single reservoir filling level csv file downloaded (one file for all th
 In the folder `inputs`, create the folder `entsoe_ror`. In this folder, create one folder per country, named with the country name, e.g. `Austria`. Make sure the names are capitalized.
 Save the csv file downloaded from ENTSO-e into the folder of the corresponding country.
 
-### Download ENTSO-e power stats for scaling output to actual annual averages
-Download Monthly Domestic Values aggregated by country for 2021, 2022 and 2023 as .csv files, and save into folder `inputs/entsoe_scaling/`
-
-https://www.entsoe.eu/data/power-stats/
-
 ### Download ERA5 data
 
-ERA5 is used in the bias correction and needs to retrieved seperately. It is input on the ERA5 native resolution and then coarsened (in space in time) to match the CESM2 granularity. **Luna: we need a description of the other variables used in the bias correction as well** 
+ERA5 is used in the bias correction and needs to retrieved seperately. It is input on the ERA5 native resolution and then coarsened (in space in time) to match the CESM2 granularity. 
+
+#### Temperature, radiation, wind speed
+These variables will be used for bias correction. 
+Download temperature 2m, Surface solar radiation downwards, 100m u-component of wind and 100m v-component of wind for the years 1995-2014. Make sure to select Europe with the following coordinates lat = (30,75), lon = (-15,50) and to store it as netcdf files.
+[https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=download](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=download)
+The files should be added to a folder of your choice, with the following format:
+- temperature: era5_deterministic_recent.t2m.025deg.1h.{year}.nc
+- radiation: era5_deterministic_recent.ssrd.025deg.1h.{year}.nc
+- wind: /100u/1hr/{year}/100u_1hr_era5_{year}{month}.nc for u and /100v/1hr/{year}/100v_1hr_era5_{year}{month}.nc
+
+The following scripts will need to be changed to remove the default ERA5 input path to the path to your folder (input_path_ERA5):
+- preprocess_temperature_ERA5.sh
+- preprocess_global_horizontal_ERA5.sh
+- preprocess_s_hub_ERA5.sh
 
 #### Discharge
-Download consolidated LISFLOOD ERA5 River discharge in the last 24 hours for the years 1995 to 2023. Make sure to select Europe with the following coordinates lat = (30,75), lon = (-15,50)
-https://cds.climate.copernicus.eu/cdsapp#!/dataset/cems-glofas-historical?tab=form
+This variable will be used for bias correction, but also for calibration of the hydropower conversion model. It is therefore treated separately from the other ERA5 variables.
+Download consolidated LISFLOOD ERA5 River discharge in the last 24 hours for the years 1995 to 2023. Make sure to select Europe with the following coordinates lat = (30,75), lon = (-15,50) and to store it as netcdf files.
+[https://ewds.climate.copernicus.eu/datasets/cems-glofas-historical?tab=download](https://ewds.climate.copernicus.eu/datasets/cems-glofas-historical?tab=download)
 
 The files should be added to the folder `inputs/ERA5/`, and should follow the naming structure "discharge_{year}.nc"
 
