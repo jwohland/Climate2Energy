@@ -207,4 +207,4 @@ The scientific publication Wohland et al. (2025) is based on C2E v1 (published a
 # License and credit
 C2E has an open licence, encouraging everyone to contribute, improve and/or use the tool. When doing so, please reference the corresponding journal article Wohland et al. (2025). 
 
-Happy coding!
+Happy coding!!
