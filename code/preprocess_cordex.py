@@ -84,7 +84,7 @@ for rcp in ["26","85"]:
 
     #open and preprocess hydro
     for time_range in ["1991-1995", "1996-2000", "2001-2005", "2006-2010", "2011-2015", "2016-2020", "2021-2025", "2026-2030", "2031-2035", "2036-2040", "2041-2045", "2046-2050", "2051-2055"]:
-        file = glob.glob(f"{path_hydro}{time_range}/Qrouted_*.zarr/")[0]
+        file = glob.glob(f"{path_hydro}{time_range}/Qrouted_*_m3s.zarr/")[0]
         discharge = xr.open_zarr(file).rename({"Qrouted":"discharge"})
         discharge = discharge.reindex(lat=discharge.lat[::-1]) #make lat go from - to +
         discharge = general_preproc(discharge).convert_calendar("proleptic_gregorian")
