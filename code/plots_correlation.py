@@ -69,10 +69,9 @@ country_subset = [
 
 # Make actual plots
 
-for correlate_with in [
-    "demand_weighted_mean_generation",
-    "mean_generation",
-]:
+correlate_with = "mean_generation"
+
+for metric in ["mean", "max", "min"]:  # plotting mean, max, and min correlation changes across realizations
     # Calculate difference in correlation and agreement on sign of change
     diff_list = []
     agree_list = []
@@ -89,9 +88,18 @@ for correlate_with in [
         df_corr_future = compute_correlation(
             "SSP370", focus_tech, df_dict_combined, correlate_with
         )
-        diff = (df_corr_future.mean(axis=1) - df_corr_hist.mean(axis=1)).to_frame(
-            name=focus_tech
-        )
+        if metric == "mean":
+            diff = (df_corr_future - df_corr_hist).mean(axis=1).to_frame(
+                name=focus_tech
+            )
+        elif metric == "max":
+            diff = (df_corr_future - df_corr_hist).max(axis=1).to_frame(
+                name=focus_tech
+            )
+        elif metric == "min":
+            diff = (df_corr_future - df_corr_hist).min(axis=1).to_frame(
+                name=focus_tech
+            )
         diff_list.append(diff)
         N_same_sign = ((df_corr_future - df_corr_hist) > 0).sum(axis=1)
         agree_list.append(N_same_sign.to_frame(name=focus_tech))
@@ -145,6 +153,6 @@ for correlate_with in [
         plt.subplots_adjust(bottom=bottom, left=left, right=0.95, top=0.98)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation);
         plt.savefig(
-            f"../plots/paper/correlation/correlation_change_{correlate_with}_all_{all_countries}.jpeg", dpi=300
+            f"../plots/paper/correlation/revisions_correlation_change_{correlate_with}_all_{all_countries}_{metric}.jpeg", dpi=300
         )
         plt.close()
