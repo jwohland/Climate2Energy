@@ -8,7 +8,7 @@ def general_preproc(ds,datetime_index=False):
     ds = select_Europe(zero_mean_longitudes(ds))
     if datetime_index == True:
         ds["time"] = ds.indexes["time"].to_datetimeindex() 
-    return ds.sel(time=slice("1991","2052"))
+    return ds.sel(time=slice("1991","2060"))
 
 def match_time_steps_interpolate(
 ds_data: xr.Dataset,
@@ -65,13 +65,13 @@ skip_leap_days: bool = True,
 
 # Path to open files
 for rcp in ["26","85"]:
-    path = f"/net/exo/landclim/yhaddad/clim2energy-ch/cordex_processed/CNRM-ALADIN63_CNRM-CERFACS-CNRM-CM5_r1i1p1_rcp{26}/bias_corrected/"
+    path = f"/net/exo/landclim/yhaddad/clim2energy-ch/cordex_processed/CNRM-ALADIN63_CNRM-CERFACS-CNRM-CM5_r1i1p1_rcp{rcp}/bias_corrected/"
     path_hydro = f"/net/argon/landclim2/pseubert/out_rcm/hist/CNRM-{rcp}/"
     out_path = "../output/CORDEX_data/atmospheric_variables/"
 
     # open, preprocess and save surface wind and specific humidity as one file
     others = general_preproc(xr.open_zarr(f"{path}3hr/sfcWind.zarr/").rename({"sfcWind":"U10"}))
-    qrefht = general_preproc(xr.open_zarr(f"{path}3hr/huss_derived.zarr/")["huss"])
+    qrefht = general_preproc(xr.open_zarr(f"{path}3hr/huss.zarr/")["huss"])
     others["QREFHT"] = qrefht
     others.to_netcdf(f"{out_path}other_CORDEX_{rcp}.nc")
 
@@ -83,8 +83,8 @@ for rcp in ["26","85"]:
     global_horizontal.to_netcdf(f"{out_path}bced_global-horizontal_CORDEX_{rcp}.nc")
 
     #open and preprocess hydro
-    for time_range in ["1991-1995", "1996-2000", "2001-2005", "2006-2010", "2011-2015", "2016-2020", "2021-2025", "2026-2030", "2031-2035", "2036-2040", "2041-2045", "2046-2050", "2051-2055"]:
-        file = glob.glob(f"{path_hydro}{time_range}/Qrouted_*_m3s.zarr/")[0]
+    for time_range in ["1991-1995", "1996-2000", "2001-2005", "2006-2010", "2011-2015", "2016-2020", "2021-2025", "2026-2030", "2031-2035", "2036-2040", "2041-2045", "2046-2050", "2051-2055","2056-2060"]:
+        file = glob.glob(f"{path_hydro}{time_range}/Qrouted_*m3s.zarr/")[0] #NB changes in naming convention for rcp 26 and 85 now make this not possible anymore
         discharge = xr.open_zarr(file).rename({"Qrouted":"discharge"})
         discharge = discharge.reindex(lat=discharge.lat[::-1]) #make lat go from - to +
         discharge = general_preproc(discharge).convert_calendar("proleptic_gregorian")
