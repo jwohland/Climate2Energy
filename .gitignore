@@ -1,0 +1,8 @@
+inputs/**
+!inputs/.gitkeep
+output/**
+!output/.gitkeep
+logs/**
+!logs/.gitkeep
+plots/**
+!plots/.gitkeep
