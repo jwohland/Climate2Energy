@@ -14,7 +14,7 @@ class Correction:
         self.bc_realization = bc_realization
         self.realization = realization
         self.scenario = scenario
-    def bias_correction(self, input_path, input_info, output_path =False, test_data=False):
+    def bias_correction(self, input_path, input_info,year, output_path =False, test_data=False):
         """
         Compute bias correction for a given
         - bias correction realization
@@ -38,7 +38,7 @@ class Correction:
             )
             bc_output_path = f"{output_path}atmospheric_variables/"
         else:
-            bc_output_path = output_path
+            bc_output_path = f"{output_path}atmospheric_variables/"
         # Check if output exists already
         try:
             ds_corr_wind = xr.open_dataset(f"{bc_output_path}bced_s100_{input_info}.nc")
@@ -95,10 +95,12 @@ if __name__ == "__main__":
     bc_realization = str(sys.argv[3])
     input_path = str(sys.argv[4])
     input_info = str(sys.argv[5])
+    year = str(sys.argv[6])
+    output_path = str(sys.argv[7])
     print(
         f"Computing bias correction for scenario {scenario} realization {realization},"
         f" using bias-correction based on historical realization {bc_realization}"
     )
     correction = Correction(bc_realization, scenario, realization)
     # execute
-    correction.bias_correction(input_path, input_info)
+    correction.bias_correction(input_path, input_info,year,output_path)

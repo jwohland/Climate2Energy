@@ -38,9 +38,9 @@ if __name__ == "__main__":
             # open CESM2 discharge HIST, for bias correction
             discharge_full_for_bc = open_discharge_with_downscaling("historical", bc_realization)
             # opening ERA5 discharge for 1995-2015, for bias correction and for 2016-2023 for translation calibration
-            era5_discharge_full = open_era(discharge_full_for_bc.lat, discharge_full_for_bc.lon, output_path, input_info, model)
+            era5_discharge_full = open_era(discharge_full_for_bc.lat, discharge_full_for_bc.lon, output_path, model)
             # open CESM2 discharge
-            discharge_full = open_discharge(f"{input_path}")
+            discharge_full = open_discharge(f"{input_path}",input_info,output_path)
             print("Bias correct climate model")
             bced_discharge = (
                 bias_correct_xarray(

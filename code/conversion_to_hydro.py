@@ -35,7 +35,7 @@ def shift_by_one_month(date):
     # Return new date while preserving the day
     return type(date)(year, month, date.day) 
 
-def downscale(ds_discharge, ds_runoff, time_range, file_name):
+def downscale(ds_discharge, ds_runoff, time_range, file_name, boost=False):
     """
     Takes monthly mean river discharge and interpolates to daily data assuming
     that the sub-monthly evolution of river discharge and runoff are identical.
@@ -72,24 +72,31 @@ def downscale(ds_discharge, ds_runoff, time_range, file_name):
         ]
 
     ds_runoff_mean["time"] = normalize_to_midnight(ds_runoff_mean.time.values)
-    # shift one month back
-    ds_discharge["time"] = [shift_by_one_month(f) for f in ds_discharge["time"].values]
-    ## Expand monthly discharge to daily discharge
-    ds_discharge_daily = (
-        ds_discharge.resample(time="1D")
-        .bfill()
-        .rename({"discharge": "discharge_expanded"})
-    ).sel(time=slice(str(time_range[0]),str(time_range[-1]))) # make sure only the exact time range is chosen
+    if boost == True:
+        ds_discharge_daily = ds_discharge
+    else:
+        # shift one month back
+        ds_discharge["time"] = [shift_by_one_month(f) for f in ds_discharge["time"].values]
+        ## Expand monthly discharge to daily discharge
+        ds_discharge_daily = (
+            ds_discharge.resample(time="1D")
+            .bfill()
+            #.rename({"discharge": "discharge_expanded"})
+        ).sel(time=slice(str(time_range[0]),str(time_range[-1]))) # make sure only the exact time range is chosen
     
     ## Match time coordinates of the two datasets: discharge_daily and runoff_mean
+    print(ds_runoff_mean)
+    print(ds_discharge_daily)
     ds_runoff_mean = ds_runoff_mean.sel(time=ds_discharge_daily.time)
     ## Expand runoff_mean, to include latitude and longitude
     ds_runoff_mean = ds_runoff_mean.broadcast_like(ds_discharge_daily)
     ## Calculate daily values of river discharge
     ds_discharge_daily["discharge"] = (
-        ds_discharge_daily.discharge_expanded * ds_runoff_mean.runoff_normalized
+        ds_discharge_daily.discharge * ds_runoff_mean.runoff_normalized
     )
-    ds_discharge_daily.to_netcdf(file_name)
+    ds_discharge_daily.convert_calendar(
+        "proleptic_gregorian" # new calendar to get numpy datetime (necessary for weekly resampling)
+    ).to_netcdf(file_name)
 
 
 def preprocess_hydro_cesm(ds, var="discharge"):
@@ -208,18 +215,32 @@ def open_discharge_with_downscaling(scenario, realization):
         "proleptic_gregorian"
     )  # new calendar to get numpy datetime (necessary for weekly resampling)
 
-def open_discharge(input_path):
+def open_discharge(input_path,input_info,output_path):
     """
     Opens and preprocesses discharge data (see function preprocess_cesm_discharge).
-    :input_path: str
+    :path_discharge, path_runoff,output_path: str
     """
-    file = glob.glob(input_path)
-    if file == []:
+    path = f"/net/meso/climphys/cesm212/boosting/archive/{input_path}/"
+
+
+    file_discharge =glob.glob(f"{path}rof/hist/{input_path}.mosart.h1.*.nc")
+    file_runoff = glob.glob(f"{path}lnd/hist/{input_path}.clm2.h6.*.nc")
+    if file_discharge == [] or file_runoff == []:
         print("ERROR: no such file")
-    ds = xr.open_dataset(file[0])
-    return preprocess_hydro_cesm(ds).convert_calendar(
-        "proleptic_gregorian"
-    )  # new calendar to get numpy datetime (necessary for weekly resampling)
+    discharge_full = preprocess_hydro_cesm(xr.open_dataset(file_discharge[0]))
+    discharge = discharge_full.resample(time="ME").mean().reindex_like(discharge_full, method="bfill")
+
+    runoff = preprocess_hydro_cesm(xr.open_dataset(file_runoff[0]), var="runoff").resample(time="1D").mean()
+
+    # downscale and save
+    downscale(
+        discharge,
+        runoff,
+        0,
+        f"{output_path}/atmospheric_variables/discharge_{input_info}.nc",
+        boost=True,
+    )
+    return xr.open_dataset(f"{output_path}/atmospheric_variables/discharge_{input_info}.nc")
 
 
 
@@ -828,5 +849,3 @@ def country_name_to_country_code(keys):
     }
     if type(keys) == list:
         return list( map(country_codes.get, keys) )
-    else:
-        return country_codes[keys]
