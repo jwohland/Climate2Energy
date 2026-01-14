@@ -267,7 +267,7 @@ def open_era(mod_lat, mod_lon, output_path, model):
         elif model == "CORDEX":
             coarsen = 2
             ds = select_Europe(ds)
-        ds_co = ds.coarsen(lat=coarsen, lon=coarsen, boundary="trim").sum()
+        ds_co = ds.coarsen(lat=coarsen, lon=coarsen, boundary="trim").mean()
         if len(ds_co.lat) == len(mod_lat) and len(ds_co.lon) == len(mod_lon):
             ds_co["lat"] = mod_lat
             ds_co["lon"] = mod_lon
