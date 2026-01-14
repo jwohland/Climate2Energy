@@ -63,30 +63,39 @@ skip_leap_days: bool = True,
     return ds_reference
 
 
+# Climate model chain
+chains = [
+        "MOHC-HadREM3-GA7-05_ICHEC-EC-EARTH",
+        #"MOHC-HadREM3-GA7-05_MOHC-HadGEM2-ES"
+        #"CNRM-ALADIN63_CNRM-CERFACS-CNRM-CM5"
+        ]
+
 # Path to open files
-for rcp in ["26","85"]:
-    path = f"/net/exo/landclim/yhaddad/clim2energy-ch/cordex_processed/CNRM-ALADIN63_CNRM-CERFACS-CNRM-CM5_r1i1p1_rcp{rcp}/bias_corrected/"
-    path_hydro = f"/net/argon/landclim2/pseubert/out_rcm/hist/CNRM-{rcp}/"
-    out_path = "../output/CORDEX_data/atmospheric_variables/"
+for chain in chains:
+    print(chain)
+    for rcp in ["26","85"]:
+        path = glob.glob(f"/net/exo/landclim/yhaddad/clim2energy-ch/cordex_processed/{chain}_r*i1p1_rcp{rcp}/bias_corrected/")[0]
+        path_hydro = glob.glob(f"/net/argon/landclim2/pseubert/out_rcm/hist/{chain}_*{rcp}/")[0]
+        out_path = f"../output/CORDEX_data/{chain}/atmospheric_variables/"
 
-    # open, preprocess and save surface wind and specific humidity as one file
-    others = general_preproc(xr.open_zarr(f"{path}3hr/sfcWind.zarr/").rename({"sfcWind":"U10"}))
-    qrefht = general_preproc(xr.open_zarr(f"{path}3hr/huss.zarr/")["huss"])
-    others["QREFHT"] = qrefht
-    others.to_netcdf(f"{out_path}other_CORDEX_{rcp}.nc")
+        # open, preprocess and save surface wind and specific humidity as one file
+        others = general_preproc(xr.open_zarr(f"{path}3hr/sfcWind.zarr/").rename({"sfcWind":"U10"}))
+        qrefht = general_preproc(xr.open_zarr(f"{path}3hr/huss.zarr/")["huss"])
+        others["QREFHT"] = qrefht
+        others.to_netcdf(f"{out_path}other_CORDEX_{chain}_{rcp}.nc")
 
-    # open, preprocess and save radiation and temperature
-    trefht = general_preproc(xr.open_zarr(f"{path}3hr/tas.zarr/").rename({"tas":"temperature"})) - 273.15 # conversion to celsius
-    global_horizontal = general_preproc(xr.open_zarr(f"{path}3hr/rsds.zarr/").rename({"rsds":"global_horizontal"}))
-    global_horizontal = match_time_steps_interpolate(trefht,global_horizontal,skip_leap_days=True)
-    trefht.to_netcdf(f"{out_path}bced_temperature_CORDEX_{rcp}.nc")
-    global_horizontal.to_netcdf(f"{out_path}bced_global-horizontal_CORDEX_{rcp}.nc")
+        # open, preprocess and save radiation and temperature
+        trefht = general_preproc(xr.open_zarr(f"{path}3hr/tas.zarr/").rename({"tas":"temperature"})) - 273.15 # conversion to celsius
+        global_horizontal = general_preproc(xr.open_zarr(f"{path}3hr/rsds.zarr/").rename({"rsds":"global_horizontal"}))
+        global_horizontal = match_time_steps_interpolate(trefht,global_horizontal,skip_leap_days=True)
+        trefht.to_netcdf(f"{out_path}bced_temperature_CORDEX_{chain}_{rcp}.nc")
+        global_horizontal.to_netcdf(f"{out_path}bced_global-horizontal_CORDEX_{chain}_{rcp}.nc")
 
-    #open and preprocess hydro
-    for time_range in ["1991-1995", "1996-2000", "2001-2005", "2006-2010", "2011-2015", "2016-2020", "2021-2025", "2026-2030", "2031-2035", "2036-2040", "2041-2045", "2046-2050", "2051-2055","2056-2060"]:
-        file = glob.glob(f"{path_hydro}{time_range}/Qrouted_*m3s.zarr/")[0] #NB changes in naming convention for rcp 26 and 85 now make this not possible anymore
-        discharge = xr.open_zarr(file).rename({"Qrouted":"discharge"})
-        discharge = discharge.reindex(lat=discharge.lat[::-1]) #make lat go from - to +
-        discharge = general_preproc(discharge).convert_calendar("proleptic_gregorian")
-        discharge.to_netcdf(f"{out_path}bced_discharge_CORDEX_{time_range}_{rcp}.nc")
+        #open and preprocess hydro
+        for time_range in ["1991-1995", "1996-2000", "2001-2005", "2006-2010", "2011-2015", "2016-2020", "2021-2025", "2026-2030", "2031-2035", "2036-2040", "2041-2045", "2046-2050", "2051-2055","2056-2060"]:
+            file = glob.glob(f"{path_hydro}{time_range}/Qrouted_*.zarr/")[0] #NB changes in naming convention for rcp 26 and 85 now make this not possible anymore
+            discharge = xr.open_zarr(file).rename({"Qrouted":"discharge"})
+            discharge = discharge.reindex(lat=discharge.lat[::-1]) #make lat go from - to +
+            discharge = general_preproc(discharge).convert_calendar("proleptic_gregorian")
+            discharge.to_netcdf(f"{out_path}bced_discharge_CORDEX_{chain}_{time_range}_{rcp}.nc")
 
