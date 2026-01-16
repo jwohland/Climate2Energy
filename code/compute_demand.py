@@ -4,6 +4,7 @@ import pandas as pd
 import demand_ninja  # todo currently is done in seperate environment. Can we integrate it?
 import subprocess
 import sys
+import glob
 
 
 def open_xarray_demandninja(input_info, bc_realization, scenario, realization,output_path):
@@ -69,7 +70,7 @@ def sense_check_demandninja_inputs(df):
     """
     assert ((df.radiation_global_horizontal >= -1e-15) | df.radiation_global_horizontal.isnull()).all().all()
     assert (
-        np.absolute(df.temperature) <= 100
+        np.absolute(df.temperature.dropna()) <= 100
     ).all().all()  # temps must be within -100 to 100 °C
     assert ((df.wind_speed_2m >= -1e-15) | df.wind_speed_2m.isnull()).all().all()
     assert (
@@ -96,7 +97,7 @@ def reformat_demandninja(df):
     return df
 
 
-def compute_country_population_density(clim_model="CESM2"):
+def compute_country_population_density(output_path,clim_model="CESM2"):
     """
     Compute Dataset with population information on the CESM2
     climate model grid per country. Output is the share of a country
@@ -105,43 +106,50 @@ def compute_country_population_density(clim_model="CESM2"):
     Based on UN WPP-Adjusted Population Density, v4.11
     :return:
     """
-    ds_pop = xr.open_dataset(
-        "../inputs/gpw_v4_population_density_adjusted_rev11_2pt5_min.nc"
-    )
-    ds_pop = ds_pop.sel(
-        longitude=slice(-15, 50), latitude=slice(75, 30)
-    )  # select Europe. I do not use the function because latitude sorting inverted here.
-    var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
-    ds_pop = ds_pop.isel(
-        raster=3, drop=True
-    )  # that is 2015 population data in line with the year used by Staffell et al (2023)
-    ds_pop_countries = cut_out_countries(ds_pop)
-    # normalize to 1 such that values mean percentage of country population per grid cell
-    ds_list = []
-    for country in ds_pop_countries.country.values:
-        ds_tmp = remap_to_clim_model(
-            ds_pop_countries.sel(country=country),
-            clim_model
-        )  # does not work for all countries at once. This loop is acceptable in terms of performance.
-        ds_tmp[var_name] /= ds_tmp[var_name].sum()
-        ds_tmp["country"] = country
-        ds_list.append(ds_tmp)
-    return xr.concat(ds_list, dim="country")
+    file = glob.glob(f"{output_path}pop_density_{clim_model}.nc")
+    if file != []:
+        return xr.open_dataset(file[0])
+    else:
+        ds_pop = xr.open_dataset(
+            "../inputs/gpw_v4_population_density_adjusted_rev11_2pt5_min.nc"
+        )
+        ds_pop = ds_pop.sel(
+            longitude=slice(-15, 50), latitude=slice(75, 30)
+        )  # select Europe. I do not use the function because latitude sorting inverted here.
+        var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
+        ds_pop = ds_pop.isel(
+            raster=3, drop=True
+        )  # that is 2015 population data in line with the year used by Staffell et al (2023)
+        ds_pop_countries = cut_out_countries(ds_pop)
+        # normalize to 1 such that values mean percentage of country population per grid cell
+        ds_list = []
+        for country in ds_pop_countries.country.values:
+            ds_tmp = remap_to_clim_model(
+                ds_pop_countries.sel(country=country),
+                output_path,
+                clim_model
+            )  # does not work for all countries at once. This loop is acceptable in terms of performance.
+            ds_tmp[var_name] /= ds_tmp[var_name].sum()
+            ds_tmp["country"] = country
+            ds_list.append(ds_tmp)
+        ds = xr.concat(ds_list, dim="country")
+        ds.to_netcdf(f"{output_path}pop_density_{clim_model}.nc")
+        return ds
 
 
-def remap_to_clim_model(ds,clim_model="CESM2"):
+def remap_to_clim_model(ds,output_path,clim_model="CESM2"):
     """
     Takes population data at high resolution (2.5 minutes) and remaps it conservatively to CESM2 resolution.
     :param ds:
     :return:
     """
-    ds.to_netcdf("../output/pop_tmp.nc")
+    ds.to_netcdf(f"{output_path}pop_tmp_{clim_model}.nc")
     subprocess.run(
-        f"cdo -s remapcon,../inputs/{clim_model}_atm_grid.txt ../output/pop_tmp.nc ../output/pop_remapped.nc",
+        f"cdo -s remapcon,../inputs/{clim_model}_atm_grid.txt {output_path}pop_tmp_{clim_model}.nc {output_path}pop_remapped_{clim_model}.nc",
         shell=True,
     )  # use cdo to remap where -s avoids output  weights and domain size output and -w avoids a "Time variable >raster< not found!" warning. (data has no time dimension)
     # todo  Warning (find_time_vars): Time variable >raster< not found!
-    ds = xr.open_dataset("../output/pop_remapped.nc")
+    ds = xr.open_dataset(f"{output_path}pop_remapped_{clim_model}.nc")
     ds = select_Europe(zero_mean_longitudes(ds))
     return ds
 
@@ -333,7 +341,7 @@ def demand_conversion(bc_realization, scenario, realization, input_info, output_
         "../inputs/demand_ninja_parameters.csv", index_col=0, skiprows=2
     )
     demand_params = parameter_fill_ninja(demand_params)  # fill missing values
-    pop_density = compute_country_population_density(clim_model)
+    pop_density = compute_country_population_density(output_path,clim_model)
     var_name = "UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 2.5 arc-minutes"
     if output_path == False:
         output_path = get_output_path(bc_realization, scenario, realization)
