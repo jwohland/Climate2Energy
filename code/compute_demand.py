@@ -68,15 +68,15 @@ def sense_check_demandninja_inputs(df):
     :param df:
     :return:
     """
-    assert ((df.radiation_global_horizontal >= -1e-15) | df.radiation_global_horizontal.isnull()).all().all()
+    assert ((df.radiation_global_horizontal.dropna() >= -1e-15) | df.radiation_global_horizontal.dropna().isnull()).all().all()
     assert (
         np.absolute(df.temperature.dropna()) <= 100
     ).all().all()  # temps must be within -100 to 100 °C
-    assert ((df.wind_speed_2m >= -1e-15) | df.wind_speed_2m.isnull()).all().all()
+    assert ((df.wind_speed_2m.dropna() >= -1e-15) | df.wind_speed_2m.dropna().isnull()).all().all()
     assert (
-        df.wind_speed_2m <= 100
+        df.wind_speed_2m.dropna() <= 100
     ).all()  # winds cannot be unrealistically high (100 m/s)
-    assert ((df.humidity >= -1e-15) | df.humidity.isnull()).all().all()
+    assert ((df.humidity.dropna() >= -1e-15) | df.humidity.dropna().isnull()).all().all()
 
 
 def reformat_demandninja(df):
