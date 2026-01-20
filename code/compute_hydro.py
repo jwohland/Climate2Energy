@@ -25,12 +25,15 @@ if __name__ == "__main__":
     # =====================================================
 
     # === CESM2 discharge ===
-    print("Open CESM2 and ERA5 discharge")
+    print("Open model and reanalysis discharge")
     # Bias correction
     try:
         bced_discharge = xr.open_dataset(f"{output_path}atmospheric_variables/bced_discharge_{input_info}.nc") 
-        #Open ERA5 for translation calibration
-        era5_discharge_full = open_era(bced_discharge.lat, bced_discharge.lon, output_path, model)
+        if model == "CESM2":
+            #Open ERA5 for translation calibration
+            calibration_discharge_full = open_era(bced_discharge.lat, bced_discharge.lon, output_path, model)
+        elif model == "CORDEX":
+            calibration_discharge_full = open_cerra()
     except:
         if bc_realization == False:
             print("error: no bias correction realization input")
@@ -38,14 +41,14 @@ if __name__ == "__main__":
             # open CESM2 discharge HIST, for bias correction
             discharge_full_for_bc = open_discharge_with_downscaling("historical", bc_realization)
             # opening ERA5 discharge for 1995-2015, for bias correction and for 2016-2023 for translation calibration
-            era5_discharge_full = open_era(discharge_full_for_bc.lat, discharge_full_for_bc.lon, output_path, model)
+            calibration_discharge_full = open_era(discharge_full_for_bc.lat, discharge_full_for_bc.lon, output_path, model)
             # open CESM2 discharge
             discharge_full = open_discharge(f"{input_path}",input_info,output_path)
             print("Bias correct climate model")
             bced_discharge = (
                 bias_correct_xarray(
                     discharge_full.discharge,
-                    era5_discharge_full.sel(time=slice("1995", "2014")).discharge.load(), 
+                    calibration_discharge_full.sel(time=slice("1995", "2014")).discharge.load(), 
                     discharge_full_for_bc.discharge,
                 )
                 .to_dataset(name="discharge")
@@ -58,26 +61,24 @@ if __name__ == "__main__":
     print("files opened")
     # aggregation
     for tech in technologies:
-        print(f"Aggregate CESM2 and ERA5 for tech {tech}")
+        print(f"Aggregate model and reanalysis for tech {tech}")
         discharge = weighted_aggregation(bced_discharge, tech,model).discharge
         if tech == "inflow":
             discharge = resample_weekly(discharge)  # get cesm2 in weekly resolution
 
-        era5_discharge = weighted_aggregation(era5_discharge_full, tech,model)
+        calibration_discharge = weighted_aggregation(calibration_discharge_full, tech,model)
 
         # === calibration data (ENTSO-e and ERA5 (2016-2023) ===
         print(f"Open ENTSO-e data for tech {tech}")
-        calibration_ds = open_discharge_entsoe_for_calibration(era5_discharge, tech)
+        calibration_ds = open_discharge_entsoe_for_calibration(calibration_discharge, tech,model)
         # rolling means
         discharge = (
-            discharge.rolling(time=rolling[tech], center=True, min_periods=1)
+            discharge.load().rolling(time=rolling[tech], center=True, min_periods=1)
             .mean()
-            .load()
         )
         calibration_ds = (
-            calibration_ds.rolling(time=rolling[tech], center=True, min_periods=1)
+            calibration_ds.load().rolling(time=rolling[tech], center=True, min_periods=1)
             .mean()
-            .load()
         )
         # make sure that only countries present in calibration_ds are present in discharge
         discharge = discharge.sel(country=calibration_ds.country)

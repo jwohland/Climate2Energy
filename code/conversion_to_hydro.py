@@ -290,6 +290,36 @@ def open_era(mod_lat, mod_lon, output_path, model):
 
     return ds_era5
 
+def open_cerra():
+    # CERRA discharge for the ENTSO-e time range
+    file_name = f"{output_path}Raw_CERRA_discharge.nc"
+
+    def preprocess_cerra(ds):
+        """
+        changes variable names to fit CORDEX standard, and changes lat order to go from 90->-90 to -90->90
+        :param ds: dataset
+        :param mod_lat: latitude grid of the climate model
+        :param mod_lon: longitude grid of the climate model
+        """
+        ds = ds.rename({"Qrouted": "discharge"})
+        ds = ds.reindex(lat=ds.lat[::-1])
+        ds = select_Europe(ds)
+        return ds
+
+    try:
+        ds_cerra = xr.open_dataset(file_name)
+    except FileNotFoundError:
+        def preproc(ds):
+            return preprocess_cerra(ds,model)
+        print("CERRA discharge files not found. Creating them.")
+        ds_cerra = []
+        for time in [["2016","2020"],["2021","2025"]]:
+            ds_cerra.append(preprocess_cerra(xr.open_zarr(f"/net/argon/landclim2/pseubert/out_rcm/hist/cerra/{time[0]}-{time[1]}/Qrouted_historical_cerra_{time[0]}_{time[1]}.zarr/"))
+        ds_cerra = xr.concat(ds_cerra)
+        ds_cerra.to_netcdf(file_name)
+
+    return ds_cerra
+
 
 def resample_weekly(ds, time_range=[]):
     """
@@ -329,7 +359,7 @@ def open_entsoe(tech):
     return ds
 
 
-def open_discharge_entsoe_for_calibration(era5_discharge, tech):
+def open_discharge_entsoe_for_calibration(era5_discharge, tech,model):
     """
     Opens ENTSO-e data, and adds the corresponding era5 discharge data into the same xarray dataset
     """
@@ -343,6 +373,9 @@ def open_discharge_entsoe_for_calibration(era5_discharge, tech):
         time=slice(str(start), str(end))
     )["discharge"].sel(country=calibration_ds.country)
     if tech == "inflow":
+        if model == "CORDEX": # cerra data is in no leap format so we need to remove leap years from entsoe, but then reconvert both datasets to gregorian for the resampling to weekly to work
+            era_discharge_for_calibration=era_discharge_for_calibration.convert_calendar("proleptic_gregorian")
+            calibration_ds = calibration_ds.convert_calender("noleap").convert_calendar("proleptic_gregorian")
         time_range = calibration_ds.time[
             [0, -1]
         ].values  # find values of start and end date, to open era5 weekly correctly
