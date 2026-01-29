@@ -14,7 +14,7 @@ class Correction:
         self.bc_realization = bc_realization
         self.realization = realization
         self.scenario = scenario
-    def bias_correction(self, input_path, input_info,year, output_path =False, test_data=False):
+    def bias_correction(self, input_path, input_info,year, output_path =False, test_data=False,boost=False):
         """
         Compute bias correction for a given
         - bias correction realization
@@ -48,9 +48,9 @@ class Correction:
             ####################
             # Step 0: Open data
             ####################
-            ds_wind, ds_rho, ds_PV, ds_other = open_wind_solar(
-                input_path, test_data=test_data
-            )  # test_data=True allows for quick test with only 10 timesteps
+                ds_wind, ds_rho, ds_PV, ds_other = open_wind_solar(
+                    input_path, test_data=test_data,boost=boost
+                )  # test_data=True allows for quick test with only 10 timesteps
             print(
                 f"Files opened. Took {int((time.time()-ts)/60)} minutes. Next: bias correction"
             )
@@ -97,10 +97,11 @@ if __name__ == "__main__":
     input_info = str(sys.argv[5])
     year = str(sys.argv[6])
     output_path = str(sys.argv[7])
+    boost=eval(sys.argv[8])
     print(
         f"Computing bias correction for scenario {scenario} realization {realization},"
         f" using bias-correction based on historical realization {bc_realization}"
     )
     correction = Correction(bc_realization, scenario, realization)
     # execute
-    correction.bias_correction(input_path, input_info,year,output_path)
+    correction.bias_correction(input_path, input_info,year,output_path=output_path,boost=boost)

@@ -98,7 +98,7 @@ def get_hub_heights(turbine_name):
     return hub_height_dict[turbine_name]
 
 
-def open_wind_solar(input_file, test_data=False):
+def open_wind_solar(input_file, test_data=False,boost=False):
     """
     Open the data needed for wind and solar energy calculation and output
     as xr.Datasets.
@@ -125,7 +125,10 @@ def open_wind_solar(input_file, test_data=False):
     # Keep only few timesteps for test data
     if test_data:
         ds_atm = ds_atm.isel(time=slice(0, 10))
-    ds_wind = ds_atm.isel(lev=slice(30, 32))  # lowermost 2 levels
+    if boost == False: #if boost == True, it has been preprocessed to only contain the lowest levels of wind, so we need to select them differently
+        ds_wind = ds_atm.isel(lev=slice(30, 32))  # lowermost 2 levels
+    else:
+        ds_wind = ds_atm.isel(lev=slice(-2,None)) # lowermost 2 levels
     ds_wind = np.sqrt(ds_wind["U"] ** 2 + ds_wind["V"] ** 2)
     ds_wind = ds_wind.to_dataset(
         name="S"
@@ -134,7 +137,9 @@ def open_wind_solar(input_file, test_data=False):
     ds_wind = find_height(ds_wind)
 
     # air density
-    ds_rho = ds_atm.isel(lev=slice(29, 32), ilev=slice(29, 33))[
+    if boost == False:
+        ds_rho = ds_atm.isel(lev=slice(29, 32), ilev=slice(29, 33))
+    ds_rho = ds_rho[
         ["RHO_CLUBB", "Z3"]
     ]  # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev
     # we here select slices that contain hub height pressure on the GCM grid
