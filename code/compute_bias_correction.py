@@ -48,7 +48,7 @@ class Correction:
             ####################
             # Step 0: Open data
             ####################
-                ds_wind, ds_rho, ds_PV, ds_other = open_wind_solar(
+            ds_wind, ds_rho, ds_PV, ds_other = open_wind_solar(
                     input_path, test_data=test_data,boost=boost
                 )  # test_data=True allows for quick test with only 10 timesteps
             print(

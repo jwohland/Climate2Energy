@@ -314,7 +314,7 @@ def open_cerra():
         print("CERRA discharge files not found. Creating them.")
         ds_cerra = []
         for time in [["2016","2020"],["2021","2025"]]:
-            ds_cerra.append(preprocess_cerra(xr.open_zarr(f"/net/argon/landclim2/pseubert/out_rcm/hist/cerra/{time[0]}-{time[1]}/Qrouted_historical_cerra_{time[0]}_{time[1]}.zarr/"))
+            ds_cerra.append(preprocess_cerra(xr.open_zarr(f"/net/argon/landclim2/pseubert/out_rcm/hist/cerra/{time[0]}-{time[1]}/Qrouted_historical_cerra_{time[0]}_{time[1]}.zarr/")))
         ds_cerra = xr.concat(ds_cerra)
         ds_cerra.to_netcdf(file_name)
 
