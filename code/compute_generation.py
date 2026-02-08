@@ -136,6 +136,9 @@ class Generation:
             ]
         )
 
+        if ds_corr_PV.time[0].dt.hour == 0:
+            ds_corr_PV = ds_corr_PV.isel(time=slice(1,None)) # remove midnight hour, because gsee can't handle it
+
         ####################
         # Step 2: Calculate capacity factors
         ####################

@@ -139,6 +139,8 @@ def open_wind_solar(input_file, test_data=False,boost=False):
     # air density
     if boost == False:
         ds_rho = ds_atm.isel(lev=slice(29, 32), ilev=slice(29, 33))
+    else:
+        ds_rho = ds_atm
     ds_rho = ds_rho[
         ["RHO_CLUBB", "Z3"]
     ]  # RHO_CLUBB and Z3  are provided on different sigma pressure coordinates called lev and ilev

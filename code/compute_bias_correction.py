@@ -76,7 +76,7 @@ class Correction:
 
             time_unit_dict = {'time':{'units': f"hours since {year}-01-01 00:00:00" }}
             # Save bias-corrected fields
-            ds_corr_wind.to_netcdf(f"{bc_output_path}bced_s100_{input_info}.nc")
+            ds_corr_wind.to_netcdf(f"{bc_output_path}bced_s100_{input_info}.nc",encoding=time_unit_dict)
             ds_corr_PV["temperature"].to_dataset().to_netcdf(
                 f"{bc_output_path}bced_temperature_{input_info}.nc"
             )
@@ -84,9 +84,9 @@ class Correction:
                 f"{bc_output_path}bced_global-horizontal_{input_info}.nc"
             )
             # Save other needed files
-            da_alpha.to_dataset(name="alpha").to_netcdf(f"{bc_output_path}alpha_{input_info}.nc")
-            ds_rho.to_netcdf(f"{bc_output_path}rho_{input_info}.nc")
-            ds_other.to_netcdf(f"{bc_output_path}other_{input_info}.nc")
+            da_alpha.to_dataset(name="alpha").to_netcdf(f"{bc_output_path}alpha_{input_info}.nc",encoding=time_unit_dict)
+            ds_rho.to_netcdf(f"{bc_output_path}rho_{input_info}.nc",encoding=time_unit_dict)
+            ds_other.to_netcdf(f"{bc_output_path}other_{input_info}.nc",encoding=time_unit_dict)
 
 
 if __name__ == "__main__":
