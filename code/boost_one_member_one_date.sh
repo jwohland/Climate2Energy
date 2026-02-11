@@ -22,10 +22,10 @@ ens=$(printf "%03d\n" "$6")
 echo "${ens}"
 
 # in and output paths
-input_path_discharge="B${scenario}cmip6.100${nb_realization}.${date}.ens${ens}"
+input_path_discharge="B${scenario}cmip6.000${nb_realization}.${date}.ens${ens}"
 input_info="boost_${date}_ens${ens}"
 output_path="/net/xenon/climphys/lbloin/CESM2energy/output/boost/${realization}/"
-input_path="${output_path}/atmospheric_variables/atmospheric_variables_${date}_ens${ens}"
+input_path="${output_path}atmospheric_variables/atmospheric_variables_${date}_ens${ens}.nc"
 
 # compute 1st part of translation in CESM2energy env
 conda activate CESM2energy
