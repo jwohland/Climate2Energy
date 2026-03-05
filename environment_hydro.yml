@@ -22,6 +22,9 @@ dependencies:
   - openpyxl
   - pwlf
   - tqdm
+  - zarr
+  - numcodecs
+  - fsspec
 
   - pip
   - pip:
