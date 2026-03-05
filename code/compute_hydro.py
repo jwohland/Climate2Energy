@@ -32,11 +32,12 @@ if __name__ == "__main__":
         if model == "CESM2":
             #Open ERA5 for translation calibration
             calibration_discharge_full = open_era(bced_discharge.lat, bced_discharge.lon, output_path, model)
-        elif model == "CORDEX":
-            calibration_discharge_full = open_cerra()
+        elif "CORDEX" in model:
+            calibration_discharge_full = open_cerra(output_path)
     except:
         if bc_realization == False:
             print("error: no bias correction realization input")
+            print(f"{output_path}atmospheric_variables/bced_discharge_{input_info}.nc")
         else:
             # open CESM2 discharge HIST, for bias correction
             discharge_full_for_bc = open_discharge_with_downscaling("historical", bc_realization)
